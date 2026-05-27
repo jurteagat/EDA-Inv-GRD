@@ -1,0 +1,401 @@
+---
+title: "Gestión de archivos de entrada — Inversiones GRD"
+author: "MEF-Pro"
+date: today
+format:
+  html:
+    code-fold: false
+    embed-resources: true
+execute:
+  warning: true
+  message: true
+  error: true
+  eval: true
+params:
+  leer_desde_local:      false
+  descargar_det_inv:     false
+  descargar_diccionario: false
+  descargar_gpkg:        false
+  subir_a_drive:         false
+  gdrive_id_det_inv:     "1Q0BYJcVM6zBvbj-5sLXctW9KThS4oZ6u"
+  gdrive_id_diccionario: "13J6fKucKgNJ8Kngtq4gGGsnvMenC1A8i"
+  gdrive_id_geoinv:      "1V1jRSqqgjeX7jJkhSag0b1ufB5PP9X2Z"
+  gdrive_id_grd_12_25:   "1ZQHQOMFD8MG0r5pgDgcniUbZR_XGDGVq"
+---
+
+# Arreglo YAML
+
+```{r}
+#| label: setup
+#| include: false
+
+# Extraemos los parámetros directamente del YAML de este mismo archivo
+# dado que positron tiene problemas al ejecutar los chuncks.
+
+if (!exists("params")) {
+  # Asegúrate de cambiar "mi_reporte.qmd" por el nombre exacto de tu archivo
+  params <- rmarkdown::yaml_front_matter("00_datos_entrada.qmd")$params
+}
+```
+
+
+# Presentación
+
+Este cuaderno gestiona los **archivos de entrada** del análisis de
+inversiones GRD. Su única responsabilidad es:
+
+1. **Sección 1** — Resolver las fuentes de datos: descargar de MEF o
+   bajar los archivos `.rds` ya preparados desde Google Drive.
+2. **Sección 2** — Convertir los archivos crudos locales (CSV /
+   GeoPackage) a formato `.rds` en `midputs/rds/`. *Solo corre cuando
+   `leer_desde_local = TRUE`.*
+3. **Sección 3** — Subir los `.rds` a Google Drive para que estén
+   disponibles públicamente. *Requiere autenticación OAuth; correr
+   manualmente cada vez que haya datos nuevos.*
+
+El cuaderno EDA principal (`EDA_Inv_GRD_v1.qmd`) siempre lee desde
+`midputs/rds/` y no depende de las fuentes originales.
+
+> **Flujo de actualización semanal** (desde terminal macOS):
+> ```bash
+> quarto render 00_datos_entrada.qmd \
+>   -P leer_desde_local:true \
+>   -P descargar_det_inv:true \
+>   -P descargar_diccionario:true \
+>   -P descargar_gpkg:true \
+>   -P subir_a_drive:true
+> ```
+> El popup OAuth aparece solo la primera vez; el token queda cacheado en
+> `~/.cache/gargle/`.
+
+# Configuración
+
+## Opciones del usuario
+
+```{r opciones-usuario}
+# Muestra la configuración activa (los parámetros vienen del YAML o de -P en terminal).
+# Para cambiarlos sin abrir RStudio, usa:
+#   quarto render 00_datos_entrada.qmd -P leer_desde_local:false
+#   quarto render 00_datos_entrada.qmd -P leer_desde_local:true -P subir_a_drive:true
+
+cat("=== Configuración activa ===\n")
+cat("leer_desde_local :", params$leer_desde_local, "\n")
+cat("subir_a_drive    :", params$subir_a_drive, "\n")
+if (params$leer_desde_local) {
+  cat("descargar_det_inv    :", params$descargar_det_inv, "\n")
+  cat("descargar_diccionario:", params$descargar_diccionario, "\n")
+  cat("descargar_gpkg       :", params$descargar_gpkg, "\n")
+} else {
+  cat("(flags de descarga MEF ignorados: leer_desde_local = FALSE)\n")
+}
+```
+
+## Paquetes
+
+```{r paquetes}
+options(scipen = 999)
+
+library(here)
+library(remotes)
+library(data.table)
+library(sf)
+library(glue)
+library(stringr)
+library(googledrive)
+library(httr)
+
+# Paquete para descargar la capa ESRI (solo usado en Sección 1 con descargar_gpkg = TRUE)
+if (!require("esri2sf", quietly = TRUE))
+  remotes::install_github("elipousson/esri2sf")
+
+# Asegura que las carpetas existen (idempotente).
+dir.create(here::here("raw"),             showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("midputs"),         showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("midputs", "rds"), showWarnings = FALSE, recursive = TRUE)
+```
+
+---
+
+# Sección 1 — Resolución de fuentes
+
+## Opción A: archivos locales / MEF
+
+*Este bloque corre solo cuando `leer_desde_local = TRUE`.*
+
+```{r s1-resolver-rutas, eval = params$leer_desde_local}
+# Sufijo de fecha estándar para los archivos descargados desde MEF.
+fecha_sufijo <- format(Sys.Date(), "%Y%m%d")
+
+# URLs del portal de datos abiertos del MEF.
+url_det_inv <- paste0(
+  "https://fs.datosabiertos.mef.gob.pe/datastorefiles/",
+  "DETALLE_INVERSIONES.csv"
+)
+url_diccionario <- paste0(
+  "https://fs.datosabiertos.mef.gob.pe/datastorefiles/",
+  "Detalle_Inversiones_Diccionario.csv"
+)
+url_esri_puntos <- paste0(
+  "https://ws.mineco.gob.pe/server/rest/services/",
+  "cartografia_pip_georef_edicion_lectura/MapServer/0"
+)
+
+# Selecciona el archivo con la fecha más reciente dado un patrón BASE_YYYYMMDD.ext.
+ruta_mas_reciente <- function(dir, patron) {
+  cand <- list.files(dir, pattern = patron, full.names = TRUE)
+  if (length(cand) == 0L) return(NULL)
+  fechas <- stringr::str_extract(cand, "\\d{8}")
+  cand[which.max(as.Date(fechas, format = "%Y%m%d"))]
+}
+```
+
+```{r s1-descargar-o-leer-rutas, eval = params$leer_desde_local}
+# --- Detalle de inversiones --------------------------------------------------
+if (params$descargar_det_inv) {
+  ruta_det_inv <- here::here(
+    "raw", glue::glue("DETALLE_INVERSIONES_{fecha_sufijo}.csv")
+  )
+  old_timeout <- getOption("timeout")
+  options(timeout = 1800)  # 30 min; el CSV puede pesar ~388 MB
+  tryCatch({
+    message("Descargando DETALLE_INVERSIONES desde: ", url_det_inv)
+    download.file(url_det_inv, ruta_det_inv, mode = "wb")
+  }, error = function(e) {
+    message("Fallo la descarga: ", conditionMessage(e), " — usando local.")
+    ruta_det_inv <<- ruta_mas_reciente(
+      here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
+    )
+  })
+  options(timeout = old_timeout)
+} else {
+  ruta_det_inv <- ruta_mas_reciente(
+    here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
+  )
+}
+message("Ruta det_inv: ", ruta_det_inv)
+
+# --- Diccionario de variables ------------------------------------------------
+if (params$descargar_diccionario) {
+  ruta_diccionario <- here::here(
+    "raw", glue::glue("Detalle_Inversiones_Diccionario_{fecha_sufijo}.csv")
+  )
+  old_timeout <- getOption("timeout")
+  options(timeout = 1800)
+  tryCatch({
+    message("Descargando diccionario desde: ", url_diccionario)
+    download.file(url_diccionario, ruta_diccionario, mode = "wb")
+  }, error = function(e) {
+    message("Fallo la descarga del diccionario: ", conditionMessage(e),
+            " — usando local.")
+    ruta_diccionario <<- ruta_mas_reciente(
+      here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
+    )
+  })
+  options(timeout = old_timeout)
+} else {
+  ruta_diccionario <- ruta_mas_reciente(
+    here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
+  )
+}
+message("Ruta diccionario: ", ruta_diccionario)
+
+# --- Capa ESRI de puntos georreferenciados -----------------------------------
+if (params$descargar_gpkg) {
+  ruta_gpkg <- here::here(
+    "raw", glue::glue("df_pu_geoinv_inv_g_{fecha_sufijo}.gpkg")
+  )
+  old_timeout <- getOption("timeout")
+  options(timeout = 1800)  # esri2sf hace múltiples peticiones HTTP
+  tryCatch({
+    message("Descargando capa ESRI con esri2sf ...")
+    capa_descargada <- esri2sf::esri2sf(url_esri_puntos)
+    sf::st_write(capa_descargada, ruta_gpkg, delete_dsn = TRUE)
+    rm(capa_descargada); invisible(gc())
+  }, error = function(e) {
+    message("Fallo esri2sf: ", conditionMessage(e), " — usando local.")
+    gpkg_cands <- list.files(
+      here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
+      full.names = TRUE
+    )
+    ruta_gpkg <<- if (length(gpkg_cands) > 0L)
+      gpkg_cands[which.max(file.info(gpkg_cands)$mtime)] else NULL
+  })
+  options(timeout = old_timeout)
+} else {
+  gpkg_cands <- list.files(
+    here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
+    full.names = TRUE
+  )
+  ruta_gpkg <- if (length(gpkg_cands) > 0L) {
+    gpkg_cands[which.max(file.info(gpkg_cands)$mtime)]
+  } else {
+    NULL
+  }
+}
+message("Ruta gpkg: ", ruta_gpkg)
+
+# --- Serie de tiempo (siempre local en midputs/) ----------------------------
+ruta_grd_12_25 <- here::here("midputs", "grd_2012_2025_t.csv")
+
+# Reporta las rutas resueltas y las fechas inferidas de los nombres.
+fecha_archivo <- function(ruta) {
+  if (is.null(ruta) || !file.exists(ruta)) return("archivo no encontrado")
+  fecha_str <- stringr::str_extract(basename(ruta), "\\d{8}")
+  if (!is.na(fecha_str)) {
+    format(as.Date(fecha_str, "%Y%m%d"), "%d/%m/%Y")
+  } else {
+    format(as.Date(file.info(ruta)$mtime), "%d/%m/%Y")
+  }
+}
+
+cat(glue::glue(
+  "Archivos de entrada:\n",
+  "  det_inv     : {basename(ruta_det_inv)}  [{fecha_archivo(ruta_det_inv)}]\n",
+  "  diccionario : {basename(ruta_diccionario)}  [{fecha_archivo(ruta_diccionario)}]\n",
+  "  gpkg        : {basename(ruta_gpkg)}  [{fecha_archivo(ruta_gpkg)}]\n",
+  "  grd_2012_25 : {basename(ruta_grd_12_25)}  [{fecha_archivo(ruta_grd_12_25)}]\n"
+))
+```
+
+## Opción B: Google Drive (pública)
+
+*Este bloque corre solo cuando `leer_desde_local = FALSE`. Descarga los
+archivos `.rds` ya preparados directamente a `midputs/rds/`.*
+
+`drive_deauth()` desactiva la autenticación OAuth para que la descarga
+de archivos de acceso público no necesite credenciales.
+
+```{r s1-descargar-desde-drive, eval = !params$leer_desde_local}
+googledrive::drive_deauth()  # archivos públicos: no requiere login
+
+# httr::timeout() controla el timeout de googledrive (distinto de options(timeout)).
+# httr::with_config() lo aplica solo durante la descarga y restaura el valor anterior.
+descargar_rds_drive <- function(id, nombre_local) {
+  ruta <- here::here("midputs", "rds", nombre_local)
+  message(glue::glue("Descargando {nombre_local} desde Google Drive ..."))
+  httr::with_config(
+    httr::timeout(1800),
+    googledrive::drive_download(
+      googledrive::as_id(id),
+      path      = ruta,
+      overwrite = TRUE
+    )
+  )
+  message(glue::glue("  -> guardado en {ruta}"))
+}
+
+descargar_rds_drive(params$gdrive_id_det_inv,     "det_inv.rds")
+descargar_rds_drive(params$gdrive_id_diccionario, "diccionario.rds")
+descargar_rds_drive(params$gdrive_id_geoinv,      "geoinv.rds")
+descargar_rds_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.rds")
+
+message("Descarga completada. El cuaderno EDA ya puede leer desde midputs/rds/.")
+```
+
+---
+
+# Sección 2 — Conversión a RDS
+
+*Solo corre cuando `leer_desde_local = TRUE`. Lee cada fuente cruda en
+su totalidad (sin filtrar columnas) y la guarda como `.rds` en
+`midputs/rds/`. Los archivos tienen nombre fijo para que Google Drive
+pueda reemplazarlos sin cambiar el ID del enlace compartido.*
+
+El formato `.rds` comprime bien y `readRDS()` es ~10× más rápido que
+`data.table::fread()` para el mismo volumen de datos.
+
+```{r s2-convertir-det-inv, eval = params$leer_desde_local}
+message("Leyendo DETALLE_INVERSIONES completo ...")
+df_det_inv_full <- data.table::fread(ruta_det_inv, encoding = "UTF-8")
+cat("Dimensiones det_inv:", dim(df_det_inv_full), "\n")
+
+saveRDS(df_det_inv_full, here::here("midputs", "rds", "det_inv.rds"))
+message("Guardado: midputs/rds/det_inv.rds")
+rm(df_det_inv_full); invisible(gc())
+```
+
+```{r s2-convertir-diccionario, eval = params$leer_desde_local}
+message("Leyendo diccionario completo ...")
+df_diccionario_full <- data.table::fread(ruta_diccionario, encoding = "UTF-8")
+cat("Dimensiones diccionario:", dim(df_diccionario_full), "\n")
+
+saveRDS(df_diccionario_full, here::here("midputs", "rds", "diccionario.rds"))
+message("Guardado: midputs/rds/diccionario.rds")
+rm(df_diccionario_full); invisible(gc())
+```
+
+```{r s2-convertir-geoinv, eval = params$leer_desde_local}
+message("Leyendo GeoPackage completo ...")
+df_geoinv_full <- sf::st_read(ruta_gpkg, quiet = FALSE)
+cat("Dimensiones geoinv:", dim(df_geoinv_full), "\n")
+
+saveRDS(df_geoinv_full, here::here("midputs", "rds", "geoinv.rds"))
+message("Guardado: midputs/rds/geoinv.rds")
+rm(df_geoinv_full); invisible(gc())
+```
+
+```{r s2-convertir-grd-12-25, eval = params$leer_desde_local}
+message("Leyendo serie de tiempo completa ...")
+df_grd_full <- data.table::fread(ruta_grd_12_25, encoding = "UTF-8")
+cat("Dimensiones grd_2012_25:", dim(df_grd_full), "\n")
+
+saveRDS(df_grd_full, here::here("midputs", "rds", "grd_2012_25.rds"))
+message("Guardado: midputs/rds/grd_2012_25.rds")
+rm(df_grd_full); invisible(gc())
+```
+
+```{r s2-verificar, eval = params$leer_desde_local}
+# Confirma que los 4 archivos existen y muestra su tamaño.
+rds_esperados <- c("det_inv.rds", "diccionario.rds", "geoinv.rds", "grd_2012_25.rds")
+rutas_rds     <- here::here("midputs", "rds", rds_esperados)
+existe        <- file.exists(rutas_rds)
+tamanos_mb    <- round(file.size(rutas_rds) / 1024^2, 1)
+
+data.frame(
+  archivo    = rds_esperados,
+  existe     = existe,
+  tamano_mb  = tamanos_mb
+)
+```
+
+---
+
+# Sección 3 — Subida a Google Drive
+
+*Correr manualmente después de la Sección 2. Requiere autenticación
+OAuth (popup en el navegador la primera vez por sesión; luego el token
+queda cacheado en `~/.cache/gargle`).*
+
+`drive_update()` reemplaza el **contenido** del archivo en Drive sin
+cambiar su ID ni sus permisos de compartición. Eso garantiza que los
+enlaces públicos que hayas distribuido siguen funcionando tras cada
+actualización semanal.
+
+```{r s3-subir-drive, eval = params$leer_desde_local && params$subir_a_drive}
+# Solo corre cuando leer_desde_local = TRUE Y subir_a_drive = TRUE.
+# Desde terminal: quarto render 00_datos_entrada.qmd -P subir_a_drive:true
+# El token OAuth queda cacheado en ~/.cache/gargle tras la primera sesión interactiva.
+
+googledrive::drive_auth()  # abre el navegador la primera vez por sesión
+
+subir_rds_drive <- function(id, nombre_local) {
+  ruta <- here::here("midputs", "rds", nombre_local)
+  if (!file.exists(ruta)) {
+    message(glue::glue("AVISO: no existe {ruta}, omitiendo."))
+    return(invisible(NULL))
+  }
+  message(glue::glue("Subiendo {nombre_local} a Google Drive (ID: {id}) ..."))
+  googledrive::drive_update(
+    file   = googledrive::as_id(id),
+    media  = ruta
+  )
+  message(glue::glue("  -> actualizado correctamente."))
+}
+
+subir_rds_drive(params$gdrive_id_det_inv,     "det_inv.rds")
+subir_rds_drive(params$gdrive_id_diccionario, "diccionario.rds")
+subir_rds_drive(params$gdrive_id_geoinv,      "geoinv.rds")
+subir_rds_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.rds")
+
+message("Subida completada. Verifica en Drive que los tamaños sean los esperados.")
+```

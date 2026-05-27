@@ -18,7 +18,25 @@ execute:
   message: true
   error: true
   eval: true
+params:
+  preparar_datos:         false
+  datos_leer_desde_local: false
 ---
+
+# Arreglo YAML
+
+```{r}
+#| label: setup
+#| include: false
+
+# Extraemos los parámetros directamente del YAML de este mismo archivo
+# dado que positron tiene problemas al ejecutar los chuncks.
+
+if (!exists("params")) {
+  # Asegúrate de cambiar "mi_reporte.qmd" por el nombre exacto de tu archivo
+  params <- rmarkdown::yaml_front_matter("EDA_Inv_GRD_v1.qmd")$params
+}
+```
 
 # Presentación
 
@@ -54,18 +72,13 @@ detalle en la sección de "inversión específica".
 ```{r opciones-usuario}
 # ============ OPCIONES DEL USUARIO ============
 
-# Descarga desde internet (TRUE) o usa el archivo local más reciente (FALSE).
-# Puedes activar solo los archivos que necesitas actualizar.
-descargar_det_inv     <- FALSE  # CSV detalle de inversiones (~388 MB)
-descargar_diccionario <- FALSE  # CSV diccionario de variables
-descargar_gpkg        <- FALSE  # Capa ESRI de puntos georreferenciados (~265 MB)
-# La serie de tiempo (grd_2012_25) siempre se lee desde midputs/ (archivo interno).
-
 # CODIGO_UNICO de la inversión a describir individualmente más abajo.
 # Edita este valor para re-ejecutar el análisis de un proyecto puntual.
 codigo_inv_foco <- "2508148"
 
 # ==============================================
+# Los archivos de entrada se preparan con 00_datos_entrada.qmd y
+# quedan disponibles en midputs/rds/ antes de ejecutar este cuaderno.
 ```
 
 ## Paquetes
@@ -116,8 +129,22 @@ library(glue)
 library(readxl)
 
 # Asegura que las carpetas del proyecto existen (idempotente).
-dir.create(here::here("raw"),     showWarnings = FALSE, recursive = TRUE)
-dir.create(here::here("midputs"), showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("raw"),             showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("midputs"),         showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("midputs", "rds"), showWarnings = FALSE, recursive = TRUE)
+```
+
+```{r preparar-datos, eval = params$preparar_datos}
+# Llama al cuaderno de gestión de datos antes de continuar con el EDA.
+# Activar desde terminal:
+#   quarto render EDA_Inv_GRD_v1.qmd -P preparar_datos:true
+#   quarto render EDA_Inv_GRD_v1.qmd -P preparar_datos:true -P datos_leer_desde_local:false
+message("Preparando datos de entrada (00_datos_entrada.qmd) ...")
+quarto::quarto_render(
+  input          = here::here("00_datos_entrada.qmd"),
+  execute_params = list(leer_desde_local = params$datos_leer_desde_local)
+)
+message("Datos listos. Continuando con el EDA ...")
 ```
 
 ## Etiquetas de variables
@@ -193,172 +220,21 @@ label_var <- function(vars) {
 }
 ```
 
-# Adquisición de los datos brutos
+# Carga de los datos de entrada
 
-## Rutas de archivo según la opción elegida
+Los archivos de entrada se preparan en `00_datos_entrada.qmd` y
+quedan disponibles como `.rds` en `midputs/rds/`. Ejecuta ese
+cuaderno antes de correr este si es la primera vez o si hay datos
+nuevos.
 
-Cuando `opcion_datos == 1L` intentamos descargar de internet y
-guardamos los archivos en `raw/` con el sufijo de fecha
-`_YYYYMMDD`. Cuando `opcion_datos == 2L` detectamos el archivo más
-reciente dentro de `raw/` usando un patrón sobre el nombre.
+El formato `.rds` permite carga ~10× más rápida que los CSV/GeoPackage
+originales. El dataset completo se lee aquí y luego se filtra a las
+columnas necesarias para el análisis.
 
-```{r resolver-rutas}
-# Sufijo de fecha estándar para los archivos descargados.
-fecha_sufijo <- format(Sys.Date(), "%Y%m%d")
-
-# URL base del portal de datos abiertos del MEF. La URL exacta del
-# CSV puede cambiar; en tal caso el usuario puede actualizarla aquí
-# o caer en la rama de lectura local (opción 2).
-
-
-
-url_det_inv <- paste0(
-  "https://fs.datosabiertos.mef.gob.pe/datastorefiles/",
-  "DETALLE_INVERSIONES.csv"
-)
-url_diccionario <- paste0(
-  "https://fs.datosabiertos.mef.gob.pe/datastorefiles/",
-  "Detalle_Inversiones_Diccionario.csv"
-)
-url_esri_puntos <- paste0(
-  "https://ws.mineco.gob.pe/server/rest/services/",
-  "cartografia_pip_georef_edicion_lectura/MapServer/0"
-)
-
-# Helper local: selecciona el archivo con la fecha más reciente a
-# partir de un patrón "BASE_YYYYMMDD.ext". Devuelve NULL si no hay.
-ruta_mas_reciente <- function(dir, patron) {
-  cand <- list.files(dir, pattern = patron, full.names = TRUE)
-  if (length(cand) == 0L) return(NULL)
-  # Extraer la fecha del nombre y quedarse con el máximo.
-  fechas <- stringr::str_extract(cand, "\\d{8}")
-  cand[which.max(as.Date(fechas, format = "%Y%m%d"))]
-}
-```
-
-## Descarga (opción 1) o lectura local (opción 2)
-
-```{r descargar-o-leer-rutas}
-# --- Detalle de inversiones --------------------------------------------------
-if (descargar_det_inv) {
-  ruta_det_inv <- here::here(
-    "raw", glue::glue("DETALLE_INVERSIONES_{fecha_sufijo}.csv")
-  )
-  old_timeout <- getOption("timeout")
-  options(timeout = 1800)  # 30 min; el CSV puede pesar ~388 MB
-  tryCatch({
-    message("Descargando DETALLE_INVERSIONES desde: ", url_det_inv)
-    download.file(url_det_inv, ruta_det_inv, mode = "wb")
-  }, error = function(e) {
-    message("Fallo la descarga: ", conditionMessage(e), " — usando local.")
-    ruta_det_inv <<- ruta_mas_reciente(
-      here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
-    )
-  })
-  options(timeout = old_timeout)
-} else {
-  ruta_det_inv <- ruta_mas_reciente(
-    here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
-  )
-}
-message("Ruta det_inv: ", ruta_det_inv)
-
-# --- Diccionario de variables ------------------------------------------------
-if (descargar_diccionario) {
-  ruta_diccionario <- here::here(
-    "raw", glue::glue("Detalle_Inversiones_Diccionario_{fecha_sufijo}.csv")
-  )
-  old_timeout <- getOption("timeout")
-  options(timeout = 1800)
-  tryCatch({
-    message("Descargando diccionario desde: ", url_diccionario)
-    download.file(url_diccionario, ruta_diccionario, mode = "wb")
-  }, error = function(e) {
-    message("Fallo la descarga del diccionario: ", conditionMessage(e),
-            " — usando local.")
-    ruta_diccionario <<- ruta_mas_reciente(
-      here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
-    )
-  })
-  options(timeout = old_timeout)
-} else {
-  ruta_diccionario <- ruta_mas_reciente(
-    here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
-  )
-}
-message("Ruta diccionario: ", ruta_diccionario)
-
-# --- Capa ESRI de puntos georreferenciados -----------------------------------
-if (descargar_gpkg) {
-  ruta_gpkg <- here::here(
-    "raw", glue::glue("df_pu_geoinv_inv_g_{fecha_sufijo}.gpkg")
-  )
-  old_timeout <- getOption("timeout")
-  options(timeout = 1800)  # esri2sf hace múltiples peticiones HTTP
-  tryCatch({
-    message("Descargando capa ESRI con esri2sf ...")
-    capa_descargada <- esri2sf::esri2sf(url_esri_puntos)
-    sf::st_write(capa_descargada, ruta_gpkg, delete_dsn = TRUE)
-    rm(capa_descargada); invisible(gc())
-  }, error = function(e) {
-    message("Fallo esri2sf: ", conditionMessage(e), " — usando local.")
-    gpkg_cands <- list.files(
-      here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
-      full.names = TRUE
-    )
-    ruta_gpkg <<- if (length(gpkg_cands) > 0L)
-      gpkg_cands[which.max(file.info(gpkg_cands)$mtime)] else NULL
-  })
-  options(timeout = old_timeout)
-} else {
-  # Para el .gpkg ordenamos por fecha de modificación porque el nombre
-  # por defecto no trae la fecha.
-  gpkg_cands <- list.files(
-    here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
-    full.names = TRUE
-  )
-  ruta_gpkg <- if (length(gpkg_cands) > 0L) {
-    gpkg_cands[which.max(file.info(gpkg_cands)$mtime)]
-  } else {
-    NULL
-  }
-}
-message("Ruta gpkg: ", ruta_gpkg)
-
-# --- Serie de tiempo (siempre local) ----------------------------------------
-ruta_grd_12_25 <- here::here("midputs", "grd_2012_2025_t.csv")
-
-# Extrae la fecha del nombre del archivo (patrón YYYYMMDD);
-# si no la encuentra, cae en la fecha de modificación del archivo.
-fecha_archivo <- function(ruta) {
-  if (is.null(ruta) || !file.exists(ruta)) return("archivo no encontrado")
-  fecha_str <- stringr::str_extract(basename(ruta), "\\d{8}")
-  if (!is.na(fecha_str)) {
-    format(as.Date(fecha_str, "%Y%m%d"), "%d/%m/%Y")
-  } else {
-    format(as.Date(file.info(ruta)$mtime), "%d/%m/%Y")
-  }
-}
-
-cat(glue::glue(
-  "Archivos de entrada:\n",
-  "  df_det_inv  : {basename(ruta_det_inv)}  [{fecha_archivo(ruta_det_inv)}]\n",
-  "  diccionario : {basename(ruta_diccionario)}  [{fecha_archivo(ruta_diccionario)}]\n",
-  "  gpkg        : {basename(ruta_gpkg)}  [{fecha_archivo(ruta_gpkg)}]\n",
-  "  grd_2012_25 : {basename(ruta_grd_12_25)}  [{fecha_archivo(ruta_grd_12_25)}]\n"
-))
-```
-
-## Lectura eficiente de `df_det_inv`
-
-El CSV de detalle de inversiones pesa cientos de MB y trae ~60
-columnas; la mayoría no nos interesan. Con el argumento `select` de
-`data.table::fread()` podemos pedir únicamente las columnas
-necesarias **desde disco**, evitando el pico de memoria de cargar
-todo y luego filtrar.
+## Lectura de `df_det_inv`
 
 ```{r leer-det-inv}
-# Columnas mínimas que necesitamos (32 finales + PROGRAMA ya está).
+# Columnas mínimas que necesitamos para el análisis.
 cols_det_inv <- c(
   "CODIGO_UNICO", "MONTO_VIABLE", "COSTO_ACTUALIZADO", "DES_TIPOLOGIA",
   "NIVEL", "ENTIDAD", "NOMBRE_INVERSION", "ESTADO", "SITUACION",
@@ -370,19 +246,13 @@ cols_det_inv <- c(
   "IND_IOARR_EMERG", "UBIGEO", "FEC_INI_EJECUCION",
   "FEC_INI_EJEC_FISICA", "NUM_HABITANTES_BENEF", "MONTO_ET_F8"
 )
+cols_det_inv_lower <- janitor::make_clean_names(cols_det_inv)
 
-# fread es tolerante: si una columna no existe (porque el dataset
-# cambió nombres) emitirá warning pero no romperá la lectura.
-df_det_inv <- data.table::fread(
-  ruta_det_inv,
-  select   = cols_det_inv,
-  encoding = "UTF-8"
+df_det_inv <- data.table::as.data.table(
+  readRDS(here::here("midputs", "rds", "det_inv.rds"))
 )
-
-# Normalizar nombres a snake_case desde la lectura.
 data.table::setnames(df_det_inv, janitor::make_clean_names(names(df_det_inv)))
-
-# Forzar codigo_unico a character — a veces aparece como numérico.
+df_det_inv <- df_det_inv[, ..cols_det_inv_lower]
 df_det_inv[, codigo_unico := as.character(codigo_unico)]
 
 cat("df_det_inv dimensiones:", dim(df_det_inv), "\n")
@@ -391,37 +261,30 @@ cat("df_det_inv dimensiones:", dim(df_det_inv), "\n")
 ## Lectura del geopackage
 
 ```{r leer-gpkg}
-df_pu_geoinv_inv_g <- sf::st_read(ruta_gpkg, quiet = FALSE)
-# names()<- evita rename.sf (que falla cuando el agr queda desfasado),
-# y make_clean_names aplica la misma lógica que clean_names() pero sobre vector.
+df_pu_geoinv_inv_g <- readRDS(here::here("midputs", "rds", "geoinv.rds"))
 local({
   n <- janitor::make_clean_names(names(df_pu_geoinv_inv_g))
   n[n == "cod_unico"]     <- "codigo_unico"
   n[n == "des_tipologia"] <- "des_tipologia_esri"
   names(df_pu_geoinv_inv_g) <<- n
 })
-cat("df_pu_geoinv_inv_g dimensiones:",
-    dim(df_pu_geoinv_inv_g), "\n")
+cat("df_pu_geoinv_inv_g dimensiones:", dim(df_pu_geoinv_inv_g), "\n")
 ```
 
 ## Lectura de la serie de tiempo 2012-2025
-
-Esta base vive siempre en `midputs/` y no se descarga de internet.
 
 ```{r leer-grd-12-25}
 cols_grd_12_25 <- c(
   "PRODUCTO_PROYECTO", "PRODUCTO_PROYECTO_NOMBRE",
   "ANIO", "PIA", "PIM", "DEVENGADO"
 )
+cols_grd_12_25_lower <- janitor::make_clean_names(cols_grd_12_25)
 
-df_grd_2012_25 <- data.table::fread(
-  ruta_grd_12_25,
-  select   = cols_grd_12_25,
-  encoding = "UTF-8"
+df_grd_2012_25 <- data.table::as.data.table(
+  readRDS(here::here("midputs", "rds", "grd_2012_25.rds"))
 )
-
-# Normalizar a snake_case; luego unificar la llave con el resto de bases.
 data.table::setnames(df_grd_2012_25, janitor::make_clean_names(names(df_grd_2012_25)))
+df_grd_2012_25 <- df_grd_2012_25[, ..cols_grd_12_25_lower]
 data.table::setnames(df_grd_2012_25, "producto_proyecto", "codigo_unico")
 df_grd_2012_25[, codigo_unico := as.character(codigo_unico)]
 
