@@ -1,0 +1,6 @@
+html, body {
+  background-color: white !important;
+}
+.container-fluid, table, td, th, tr {
+  background-color: white !important;
+}
