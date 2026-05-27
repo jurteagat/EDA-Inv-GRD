@@ -54,10 +54,12 @@ detalle en la sección de "inversión específica".
 ```{r opciones-usuario}
 # ============ OPCIONES DEL USUARIO ============
 
-# ¿De dónde leer los datos?
-#   1 = Descargar nuevamente los datos de internet
-#   2 = Usar los datos más recientes disponibles en la carpeta raw/
-opcion_datos <- 2L
+# Descarga desde internet (TRUE) o usa el archivo local más reciente (FALSE).
+# Puedes activar solo los archivos que necesitas actualizar.
+descargar_det_inv     <- FALSE  # CSV detalle de inversiones (~388 MB)
+descargar_diccionario <- FALSE  # CSV diccionario de variables
+descargar_gpkg        <- FALSE  # Capa ESRI de puntos georreferenciados (~265 MB)
+# La serie de tiempo (grd_2012_25) siempre se lee desde midputs/ (archivo interno).
 
 # CODIGO_UNICO de la inversión a describir individualmente más abajo.
 # Edita este valor para re-ejecutar el análisis de un proyecto puntual.
@@ -73,70 +75,122 @@ facilita levantar el entorno en una máquina nueva. Sin embargo, la
 forma más reproducible es `renv::restore()` al inicio del proyecto.
 
 ```{r paquetes}
-# Evita notación científica en todos los outputs numéricos.
+# Si algún paquete no está disponible, ejecuta en consola: renv::restore()
+# Eso instala las versiones exactas del renv.lock y resuelve dependencias.
 options(scipen = 999)
 
 # --- Utilitarios básicos ---------------------------------------------------
-if (!require("devtools")) install.packages("devtools")
-if (!require("remotes"))  install.packages("remotes")
-if (!require("here"))     install.packages("here")
-library(here)  # rutas relativas robustas al proyecto
+library(here)
+library(devtools)
+library(remotes)
 
 # --- Manipulación de datos -------------------------------------------------
-if (!require("tidyverse"))  install.packages("tidyverse")
-if (!require("data.table")) install.packages("data.table")
-if (!require("janitor"))    install.packages("janitor")
-if (!require("stringr"))    install.packages("stringr")
 library(tidyverse)
 library(data.table)
 library(janitor)
 library(stringr)
 
 # --- Geoespacial -----------------------------------------------------------
-if (!require("sf"))         install.packages("sf")
-if (!require("rmapshaper")) install.packages("rmapshaper")
 library(sf)
 library(rmapshaper)
-
-# esri2sf no está en CRAN; se descarga de GitHub con remotes.
-if (!require("esri2sf")) remotes::install_github("elipousson/esri2sf")
-library(esri2sf)
+library(esri2sf)        # GitHub: elipousson/esri2sf — incluido en renv.lock
 
 # --- Visualización ---------------------------------------------------------
-if (!require("plotly"))  install.packages("plotly")
-if (!require("scales"))  install.packages("scales")
 library(plotly)
 library(scales)
-
-if (!require("leaflet")) install.packages("leaflet")
 library(leaflet)
-
-# leaflet.extras necesita versión de desarrollo para grupos de capas.
-if (!require("leaflet.extras")) {
-  remotes::install_github("trafficonese/leaflet.extras")
-}
-library(leaflet.extras)
-
-if (!require("crosstalk")) install.packages("crosstalk")
-if (!require("leafpop"))   install.packages("leafpop")
+library(leaflet.extras) # GitHub: trafficonese/leaflet.extras — incluido en renv.lock
 library(crosstalk)
 library(leafpop)
-# library(htmltools)
 
 # --- Tablas y resúmenes ----------------------------------------------------
-if (!require("DT"))     install.packages("DT")
-if (!require("skimr"))  install.packages("skimr")
-if (!require("glue"))   install.packages("glue")
-if (!require("readxl")) install.packages("readxl")
-if (!require("sessioninfo")) install.packages("sessioninfo")
 library(DT)
 library(skimr)
+library(summarytools)
+summarytools::st_options(
+  plain.ascii = FALSE,
+  style       = "grid",
+  custom.css  = here::here("summarytools_white.css")
+)
 library(glue)
 library(readxl)
 
 # Asegura que las carpetas del proyecto existen (idempotente).
 dir.create(here::here("raw"),     showWarnings = FALSE, recursive = TRUE)
 dir.create(here::here("midputs"), showWarnings = FALSE, recursive = TRUE)
+```
+
+## Etiquetas de variables
+
+Definimos aquí las etiquetas coloquiales y las definiciones locales de
+cada variable. Al estar disponibles desde el inicio, cualquier tabla
+del cuaderno puede usarlas para mostrar encabezados legibles en vez de
+nombres de columna crudos. La función `label_var()` actúa como lookup
+con fallback al nombre original cuando no hay entrada en el diccionario.
+
+```{r definir-etiquetas}
+# Nombres coloquiales/abreviados para encabezados de tablas.
+# Incluye columnas calculadas que aparecen en las tablas de análisis.
+nombres_comunes <- tibble::tribble(
+  ~variable,                  ~nombre_comun,
+  "codigo_unico",             "Cód. Único",
+  "codigo_pro",               "Cód. Programa",
+  "link_ssi",                 "Enlace SSI",
+  "des_servicio",             "Servicio",
+  "des_tipologia_esri",       "Tipología (ESRI)",
+  "geometry",                 "Geometría",
+  "monto_viable",             "Monto viable",
+  "costo_actualizado",        "Costo actual.",
+  "des_tipologia",            "Tipología",
+  "nivel",                    "Nivel",
+  "entidad",                  "Entidad",
+  "nombre_inversion",         "Nombre inversión",
+  "estado",                   "Estado",
+  "situacion",                "Situación",
+  "alternativa",              "Alternativa",
+  "fecha_viabilidad",         "Fecha viab.",
+  "programa",                 "Programa",
+  "subprograma",              "Subprograma",
+  "marco",                    "Marco",
+  "tipo_inversion",           "Tipo inversión",
+  "des_modalidad",            "Modalidad",
+  "registrado_pmi",           "En PMI",
+  "expediente_tecnico",       "Exp. técnico",
+  "informe_cierre",           "Inf. cierre",
+  "deven_acumul_anio_ant",    "Deveng. acum. ant.",
+  "pia_anio_actual",          "PIA actual",
+  "pim_anio_actual",          "PIM actual",
+  "saldo_ejecutar",           "Saldo ejec.",
+  "tiene_f12b",               "Tiene F-12B",
+  "avance_fisico",            "Av. físico",
+  "avance_ejecucion",         "Av. ejecución",
+  "ind_ioarr_emerg",          "IOARR/Emerg.",
+  "ubigeo",                   "Ubigeo",
+  "fec_ini_ejecucion",        "Ini. ejecución",
+  "fec_ini_ejec_fisica",      "Ini. ejec. física",
+  "num_habitantes_benef",     "Hab. benef.",
+  "monto_et_f8",              "Monto ET/F8",
+  "n_proyectos",              "N° proyectos",
+  "costo_actualizado_prom",   "Costo actual. (prom.)",
+  "monto_viable_prom",        "Monto viable (prom.)",
+  "pct_costo_vs_viable",      "% Costo vs. viable",
+  "pct_pim_vs_pia",           "% PIM vs. PIA"
+)
+
+definiciones_locales <- tibble::tribble(
+  ~variable,              ~definicion_local,
+  "codigo_pro",           "Código interno del programa presupuestal (capa ESRI).",
+  "link_ssi",             "URL al expediente del proyecto en el SSI del MEF.",
+  "des_servicio",         "Descripción del servicio público asociado (capa ESRI).",
+  "des_tipologia_esri",   "Tipología según la capa ESRI; puede diferir de des_tipologia del diccionario MEF.",
+  "geometry",             "Geometría (POINT) en WGS84 con la ubicación del proyecto."
+)
+
+# Lookup con fallback: devuelve nombre_comun si existe, si no el nombre original.
+label_var <- function(vars) {
+  lookup <- setNames(nombres_comunes$nombre_comun, nombres_comunes$variable)
+  dplyr::coalesce(lookup[vars], vars)
+}
 ```
 
 # Adquisición de los datos brutos
@@ -185,69 +239,80 @@ ruta_mas_reciente <- function(dir, patron) {
 ## Descarga (opción 1) o lectura local (opción 2)
 
 ```{r descargar-o-leer-rutas}
-if (opcion_datos == 1L) {
-
-  # ---- Descarga del detalle de inversiones ---------------------------------
+# --- Detalle de inversiones --------------------------------------------------
+if (descargar_det_inv) {
   ruta_det_inv <- here::here(
     "raw", glue::glue("DETALLE_INVERSIONES_{fecha_sufijo}.csv")
   )
+  old_timeout <- getOption("timeout")
+  options(timeout = 1800)  # 30 min; el CSV puede pesar ~388 MB
   tryCatch({
     message("Descargando DETALLE_INVERSIONES desde: ", url_det_inv)
     download.file(url_det_inv, ruta_det_inv, mode = "wb")
   }, error = function(e) {
-    message("Fallo la descarga del CSV principal: ", conditionMessage(e))
-    message("Se intentará leer el más reciente local.")
+    message("Fallo la descarga: ", conditionMessage(e), " — usando local.")
     ruta_det_inv <<- ruta_mas_reciente(
       here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
     )
   })
-
-  # ---- Descarga del diccionario de datos -----------------------------------
-  ruta_diccionario <- here::here(
-    "raw",
-    glue::glue("Detalle_Inversiones_Diccionario_{fecha_sufijo}.csv")
+  options(timeout = old_timeout)
+} else {
+  ruta_det_inv <- ruta_mas_reciente(
+    here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
   )
+}
+message("Ruta det_inv: ", ruta_det_inv)
+
+# --- Diccionario de variables ------------------------------------------------
+if (descargar_diccionario) {
+  ruta_diccionario <- here::here(
+    "raw", glue::glue("Detalle_Inversiones_Diccionario_{fecha_sufijo}.csv")
+  )
+  old_timeout <- getOption("timeout")
+  options(timeout = 1800)
   tryCatch({
     message("Descargando diccionario desde: ", url_diccionario)
     download.file(url_diccionario, ruta_diccionario, mode = "wb")
   }, error = function(e) {
-    message("No se pudo descargar el diccionario: ",
-            conditionMessage(e))
+    message("Fallo la descarga del diccionario: ", conditionMessage(e),
+            " — usando local.")
     ruta_diccionario <<- ruta_mas_reciente(
-      here::here("raw"),
-      "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
+      here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
     )
   })
+  options(timeout = old_timeout)
+} else {
+  ruta_diccionario <- ruta_mas_reciente(
+    here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
+  )
+}
+message("Ruta diccionario: ", ruta_diccionario)
 
-  # ---- Descarga de la capa ESRI de puntos ----------------------------------
+# --- Capa ESRI de puntos georreferenciados -----------------------------------
+if (descargar_gpkg) {
   ruta_gpkg <- here::here(
     "raw", glue::glue("df_pu_geoinv_inv_g_{fecha_sufijo}.gpkg")
   )
+  old_timeout <- getOption("timeout")
+  options(timeout = 1800)  # esri2sf hace múltiples peticiones HTTP
   tryCatch({
     message("Descargando capa ESRI con esri2sf ...")
     capa_descargada <- esri2sf::esri2sf(url_esri_puntos)
-    # Se guarda como gpkg para evitar los warnings de shapefile.
     sf::st_write(capa_descargada, ruta_gpkg, delete_dsn = TRUE)
-    rm(capa_descargada); gc()
+    rm(capa_descargada); invisible(gc())
   }, error = function(e) {
-    message("Fallo esri2sf: ", conditionMessage(e))
-    ruta_gpkg <<- ruta_mas_reciente(
-      here::here("raw"), "^df_pu_geoinv_inv_g.*\\.gpkg$"
+    message("Fallo esri2sf: ", conditionMessage(e), " — usando local.")
+    gpkg_cands <- list.files(
+      here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
+      full.names = TRUE
     )
+    ruta_gpkg <<- if (length(gpkg_cands) > 0L)
+      gpkg_cands[which.max(file.info(gpkg_cands)$mtime)] else NULL
   })
-
+  options(timeout = old_timeout)
 } else {
-
-  # Rama 2: usar los archivos locales más recientes en raw/.
-  ruta_det_inv <- ruta_mas_reciente(
-    here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
-  )
-  ruta_diccionario <- ruta_mas_reciente(
-    here::here("raw"),
-    "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
-  )
-  # Para el .gpkg ordenamos por fecha de modificación del archivo,
-  # porque el nombre por defecto no trae la fecha (ver plan_0.md).
+  # Para el .gpkg ordenamos por fecha de modificación porque el nombre
+  # por defecto no trae la fecha.
   gpkg_cands <- list.files(
     here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
     full.names = TRUE
@@ -258,12 +323,30 @@ if (opcion_datos == 1L) {
     NULL
   }
 }
+message("Ruta gpkg: ", ruta_gpkg)
 
-# Mensaje-resumen al usuario.
-cat("Rutas resueltas:\n")
-cat(" - df_det_inv         :", ruta_det_inv,     "\n")
-cat(" - diccionario        :", ruta_diccionario, "\n")
-cat(" - df_pu_geoinv (gpkg):", ruta_gpkg,        "\n")
+# --- Serie de tiempo (siempre local) ----------------------------------------
+ruta_grd_12_25 <- here::here("midputs", "grd_2012_2025_t.csv")
+
+# Extrae la fecha del nombre del archivo (patrón YYYYMMDD);
+# si no la encuentra, cae en la fecha de modificación del archivo.
+fecha_archivo <- function(ruta) {
+  if (is.null(ruta) || !file.exists(ruta)) return("archivo no encontrado")
+  fecha_str <- stringr::str_extract(basename(ruta), "\\d{8}")
+  if (!is.na(fecha_str)) {
+    format(as.Date(fecha_str, "%Y%m%d"), "%d/%m/%Y")
+  } else {
+    format(as.Date(file.info(ruta)$mtime), "%d/%m/%Y")
+  }
+}
+
+cat(glue::glue(
+  "Archivos de entrada:\n",
+  "  df_det_inv  : {basename(ruta_det_inv)}  [{fecha_archivo(ruta_det_inv)}]\n",
+  "  diccionario : {basename(ruta_diccionario)}  [{fecha_archivo(ruta_diccionario)}]\n",
+  "  gpkg        : {basename(ruta_gpkg)}  [{fecha_archivo(ruta_gpkg)}]\n",
+  "  grd_2012_25 : {basename(ruta_grd_12_25)}  [{fecha_archivo(ruta_grd_12_25)}]\n"
+))
 ```
 
 ## Lectura eficiente de `df_det_inv`
@@ -296,9 +379,11 @@ df_det_inv <- data.table::fread(
   encoding = "UTF-8"
 )
 
-# Forzar CODIGO_UNICO a character — plan_0.md advierte que a veces
-# este identificador aparece como numérico en algunas fuentes.
-df_det_inv[, CODIGO_UNICO := as.character(CODIGO_UNICO)]
+# Normalizar nombres a snake_case desde la lectura.
+data.table::setnames(df_det_inv, janitor::make_clean_names(names(df_det_inv)))
+
+# Forzar codigo_unico a character — a veces aparece como numérico.
+df_det_inv[, codigo_unico := as.character(codigo_unico)]
 
 cat("df_det_inv dimensiones:", dim(df_det_inv), "\n")
 ```
@@ -307,6 +392,14 @@ cat("df_det_inv dimensiones:", dim(df_det_inv), "\n")
 
 ```{r leer-gpkg}
 df_pu_geoinv_inv_g <- sf::st_read(ruta_gpkg, quiet = FALSE)
+# names()<- evita rename.sf (que falla cuando el agr queda desfasado),
+# y make_clean_names aplica la misma lógica que clean_names() pero sobre vector.
+local({
+  n <- janitor::make_clean_names(names(df_pu_geoinv_inv_g))
+  n[n == "cod_unico"]     <- "codigo_unico"
+  n[n == "des_tipologia"] <- "des_tipologia_esri"
+  names(df_pu_geoinv_inv_g) <<- n
+})
 cat("df_pu_geoinv_inv_g dimensiones:",
     dim(df_pu_geoinv_inv_g), "\n")
 ```
@@ -316,8 +409,6 @@ cat("df_pu_geoinv_inv_g dimensiones:",
 Esta base vive siempre en `midputs/` y no se descarga de internet.
 
 ```{r leer-grd-12-25}
-ruta_grd_12_25 <- here::here("midputs", "grd_2012_2025_t.csv")
-
 cols_grd_12_25 <- c(
   "PRODUCTO_PROYECTO", "PRODUCTO_PROYECTO_NOMBRE",
   "ANIO", "PIA", "PIM", "DEVENGADO"
@@ -329,9 +420,10 @@ df_grd_2012_25 <- data.table::fread(
   encoding = "UTF-8"
 )
 
-# Normalizar PRODUCTO_PROYECTO a character (misma razón que
-# CODIGO_UNICO: llave que debe vincular entre bases).
-df_grd_2012_25[, PRODUCTO_PROYECTO := as.character(PRODUCTO_PROYECTO)]
+# Normalizar a snake_case; luego unificar la llave con el resto de bases.
+data.table::setnames(df_grd_2012_25, janitor::make_clean_names(names(df_grd_2012_25)))
+data.table::setnames(df_grd_2012_25, "producto_proyecto", "codigo_unico")
+df_grd_2012_25[, codigo_unico := as.character(codigo_unico)]
 
 cat("df_grd_2012_25 dimensiones:", dim(df_grd_2012_25), "\n")
 ```
@@ -343,8 +435,7 @@ que llega nuevo, sugiero fijarse en:
 
 - **Tipo de cada columna** (¿numérico donde debería serlo?).
 - **Porcentaje de vacíos** (`NA`) — indica calidad de la fuente.
-- **Duplicados en las llaves**: `CODIGO_UNICO`, `COD_UNICO`,
-  `PRODUCTO_PROYECTO`. Si hay duplicados, los joins explotan.
+- **Duplicados en la llave**: `codigo_unico`. Si hay duplicados, los joins explotan.
 - **Rangos sospechosos**: montos negativos, fechas del año 1900, etc.
 
 ## `df_det_inv`
@@ -352,9 +443,9 @@ que llega nuevo, sugiero fijarse en:
 ```{r describir-det-inv}
 dplyr::glimpse(df_det_inv)
 
-# Cuántos proyectos hay por PROGRAMA (top 15) — nos ayuda a
+# Cuántos proyectos hay por programa (top 15) — nos ayuda a
 # confirmar que el filtro GRD más abajo no deja la base vacía.
-df_det_inv[, .N, by = PROGRAMA][order(-N)][1:15]
+df_det_inv[, .N, by = programa][order(-N)][1:15]
 ```
 
 ## `df_pu_geoinv_inv_g`
@@ -362,11 +453,11 @@ df_det_inv[, .N, by = PROGRAMA][order(-N)][1:15]
 ```{r describir-gpkg}
 dplyr::glimpse(df_pu_geoinv_inv_g)
 
-# ¿Cuántos puntos duplicados por COD_UNICO hay? Lo necesitaremos al
+# ¿Cuántos puntos duplicados por codigo_unico hay? Lo necesitaremos al
 # depurar.
 df_pu_geoinv_inv_g |>
   sf::st_drop_geometry() |>
-  dplyr::count(COD_UNICO, sort = TRUE) |>
+  dplyr::count(codigo_unico, sort = TRUE) |>
   dplyr::filter(n > 1) |>
   dplyr::slice_head(n = 10)
 ```
@@ -377,89 +468,140 @@ df_pu_geoinv_inv_g |>
 dplyr::glimpse(df_grd_2012_25)
 
 # Rango de años presente en la serie.
-df_grd_2012_25[, .(anio_min = min(ANIO, na.rm = TRUE),
-                   anio_max = max(ANIO, na.rm = TRUE))]
+df_grd_2012_25[, .(anio_min = min(anio, na.rm = TRUE),
+                   anio_max = max(anio, na.rm = TRUE))]
+```
+
+# Universo GRD común a las tres bases
+
+Los tres datasets no tienen el mismo universo: `df_det_inv` contiene todas
+las inversiones del MEF (todos los programas), `df_pu_geoinv_inv_g` solo las
+georreferenciadas, y `df_grd_2012_25` solo las con ejecución de gasto
+2012-2025. La intersección de los tres es el universo más robusto para el
+análisis.
+
+El vector `codigos_grd_comunes` se usará en todos los pasos de depuración
+para garantizar que ninguna base `_dp` ni `_dpf` contenga inversiones ausentes
+en las otras dos.
+
+```{r identificar-universo-grd}
+programa_objetivo <- "GESTION DE RIESGOS Y EMERGENCIAS"
+
+# 1. Códigos GRD en df_det_inv (filtro por programa, sin crear objeto completo).
+codigos_grd_det <- unique(as.character(
+  df_det_inv[
+    stringi::stri_trans_general(programa, "Latin-ASCII") == programa_objetivo,
+    codigo_unico
+  ]
+))
+
+# 2. Códigos únicos en df_pu_geoinv_inv_g (puede tener múltiples puntos por código).
+codigos_grd_geo <- unique(as.character(df_pu_geoinv_inv_g$codigo_unico))
+
+# 3. Códigos únicos en df_grd_2012_25 (una fila por año por código).
+codigos_grd_ts <- unique(as.character(df_grd_2012_25[["codigo_unico"]]))
+
+# 4. Intersección de los tres conjuntos.
+codigos_grd_comunes <- base::Reduce(
+  intersect,
+  list(codigos_grd_det, codigos_grd_geo, codigos_grd_ts)
+)
+
+cat(glue::glue(
+  "GRD en df_det_inv:              {length(codigos_grd_det)}\n",
+  "Únicos en df_pu_geoinv_inv_g:   {length(codigos_grd_geo)}\n",
+  "Únicos en df_grd_2012_25:       {length(codigos_grd_ts)}\n",
+  "Universo común (intersección):  {length(codigos_grd_comunes)}\n"
+))
 ```
 
 # Depuración (limpieza) de cada base
 
 ## `df_det_inv` → filtro GRD → `df_det_inv_grd_dp`
 
-Filtramos por `PROGRAMA == "GESTIÓN DE RIESGOS Y EMERGENCIAS"`. Dado
+Filtramos por `programa == "GESTIÓN DE RIESGOS Y EMERGENCIAS"`. Dado
 que la tilde puede fallar si la codificación del CSV cambia, usamos
 una comparación que tolera variantes normalizando con
 `stringi::stri_trans_general`.
 
 ```{r filtrar-grd}
-programa_objetivo <- "GESTION DE RIESGOS Y EMERGENCIAS"
-
+# programa_objetivo fue definido en identificar-universo-grd.
 df_det_inv_grd <- df_det_inv[
-  stringi::stri_trans_general(PROGRAMA, "Latin-ASCII") ==
-    programa_objetivo
+  stringi::stri_trans_general(programa, "Latin-ASCII") == programa_objetivo
 ]
 
-cat("Filas GRD:", nrow(df_det_inv_grd),
-    " de ", nrow(df_det_inv), "\n")
+cat(glue::glue(
+  "Filas GRD (filtro programa): {nrow(df_det_inv_grd)} de {nrow(df_det_inv)}\n"
+))
 
 # Liberar memoria — df_det_inv ya no se usa en el resto del cuaderno.
 rm(df_det_inv); invisible(gc())
 
-# df_det_inv_grd_dp es, en este caso, idéntico al subset ya
-# filtrado (las columnas finales fueron seleccionadas al leer).
-df_det_inv_grd_dp <- df_det_inv_grd
-df_det_inv_grd_dp[, CODIGO_UNICO := as.character(CODIGO_UNICO)]
+# Restringir al universo común de las tres bases.
+df_det_inv_grd_dp <- df_det_inv_grd[codigo_unico %in% codigos_grd_comunes]
+df_det_inv_grd_dp[, codigo_unico := as.character(codigo_unico)]
 rm(df_det_inv_grd)
+
+cat(glue::glue(
+  "df_det_inv_grd_dp (universo común): {nrow(df_det_inv_grd_dp)} filas\n"
+))
 ```
 
-## [ME QUEDE AQUI]`df_pu_geoinv_inv_g` → `df_pu_geoinv_inv_g_dp`
+## `df_pu_geoinv_inv_g` → `df_pu_geoinv_inv_g_dp`
 
 Nos quedamos con las columnas mínimas, aseguramos un punto por
-`COD_UNICO` y aseguramos que la llave esté en character.
+`codigo_unico` y aseguramos que la llave esté en character.
 
 ```{r depurar-gpkg}
 df_pu_geoinv_inv_g_dp <- df_pu_geoinv_inv_g |>
-  dplyr::select(COD_UNICO, CODIGO_PRO, LINK_SSI,
-                des_servicio, des_tipologia) |>
+  # Restringir al universo común antes de cualquier otro procesamiento.
+  dplyr::filter(codigo_unico %in% codigos_grd_comunes) |>
+  dplyr::select(codigo_unico, codigo_pro, link_ssi,
+                des_servicio, des_tipologia_esri) |>
   # distinct() preserva el componente sf y conserva la primera
-  # fila por COD_UNICO. Según el usuario los demás valores son
+  # fila por codigo_unico. Según el usuario los demás valores son
   # iguales excepto la ubicación, así que es seguro.
-  dplyr::distinct(COD_UNICO, .keep_all = TRUE) |>
-  dplyr::mutate(COD_UNICO = as.character(COD_UNICO))
+  dplyr::distinct(codigo_unico, .keep_all = TRUE) |>
+  dplyr::mutate(codigo_unico = as.character(codigo_unico))
 
-cat("Puntos únicos por COD_UNICO:",
-    nrow(df_pu_geoinv_inv_g_dp), "\n")
+cat(glue::glue(
+  "Puntos únicos por codigo_unico (universo común): {nrow(df_pu_geoinv_inv_g_dp)}\n"
+))
 
 rm(df_pu_geoinv_inv_g); invisible(gc())
 ```
 
 ## Fusión geoespacial → `df_pu_geoinv_inv_g_dpf`
 
-Usamos **left join desde la capa geoespacial** para conservar todos
-los puntos y agregarles los atributos tabulares de GRD. Los puntos
-que no tienen match se pueden detectar mirando NAs en las columnas
-provenientes de `df_det_inv_grd_dp`.
+Al compartir el mismo universo `codigos_grd_comunes`, todos los registros de
+`df_pu_geoinv_inv_g_dp` tienen match garantizado en `df_det_inv_grd_dp`.
+Usamos **inner join** para hacerlo explícito: si algún paso previo se
+desfasara, el join fallaría ruidosamente en lugar de producir NAs silenciosos.
 
 ```{r fusionar-geo}
 df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dp |>
-  dplyr::left_join(
-    df_det_inv_grd_dp,
-    by = c("COD_UNICO" = "CODIGO_UNICO")
-  )
+  dplyr::inner_join(df_det_inv_grd_dp, by = "codigo_unico")
 
-# Diagnóstico: ¿cuántos puntos matchearon con la tabla GRD?
-n_con_match <- sum(!is.na(df_pu_geoinv_inv_g_dpf$NOMBRE_INVERSION))
-cat("Puntos con match GRD:", n_con_match, "/",
-    nrow(df_pu_geoinv_inv_g_dpf), "\n")
-
-# Sanity check: debe seguir siendo un objeto sf.
+stopifnot(nrow(df_pu_geoinv_inv_g_dpf) == length(codigos_grd_comunes))
 stopifnot(inherits(df_pu_geoinv_inv_g_dpf, "sf"))
+
+cat(glue::glue(
+  "df_pu_geoinv_inv_g_dpf: {nrow(df_pu_geoinv_inv_g_dpf)} filas ",
+  "(debe ser igual a {length(codigos_grd_comunes)})\n"
+))
 ```
 
 ## `df_grd_2012_25` → `df_grd_2012_25_dp`
 
 ```{r depurar-grd-12-25}
-df_grd_2012_25_dp <- df_grd_2012_25[, ..cols_grd_12_25]
-df_grd_2012_25_dp[, PRODUCTO_PROYECTO := as.character(PRODUCTO_PROYECTO)]
+# Conservar todas las filas anuales de las inversiones del universo común.
+df_grd_2012_25_dp <- df_grd_2012_25[codigo_unico %in% codigos_grd_comunes]
+
+cat(glue::glue(
+  "df_grd_2012_25_dp: {nrow(df_grd_2012_25_dp)} filas ",
+  "({data.table::uniqueN(df_grd_2012_25_dp$codigo_unico)} inversiones únicas)\n"
+))
+
 rm(df_grd_2012_25); invisible(gc())
 ```
 
@@ -468,33 +610,77 @@ rm(df_grd_2012_25); invisible(gc())
 Para el merge por serie de tiempo descartamos la geometría del lado
 geoespacial: ni plotear una serie por año requiere geometría, ni
 tiene sentido arrastrar el costo computacional de la clase `sf`.
+Al compartir el universo común el **inner join** garantiza que no quede
+ninguna fila sin atributos de `df_pu_geoinv_inv_g_dpf`.
 
 ```{r fusionar-temporal}
 df_grd_2012_25_dpf <- df_grd_2012_25_dp |>
-  dplyr::left_join(
+  dplyr::inner_join(
     sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf),
-    by = c("PRODUCTO_PROYECTO" = "COD_UNICO")
+    by = "codigo_unico"
   )
 
-cat("df_grd_2012_25_dpf dimensiones:",
-    dim(df_grd_2012_25_dpf), "\n")
+stopifnot(
+  setequal(
+    unique(df_grd_2012_25_dpf$codigo_unico),
+    codigos_grd_comunes
+  )
+)
+
+cat(glue::glue(
+  "df_grd_2012_25_dpf: {nrow(df_grd_2012_25_dpf)} filas ",
+  "({data.table::uniqueN(df_grd_2012_25_dpf$codigo_unico)} inversiones únicas)\n"
+))
 ```
 
 # Análisis exploratorio
 
 ## Resumen por variable de las dos bases fusionadas
 
-`skimr::skim()` genera de un tirón: `n_missing`, `complete_rate`,
-`mean`, `sd` (varianza = `sd^2`), `p0` (mínimo), `p100` (máximo),
-cuartiles y un mini-histograma ASCII. Para la base geoespacial
+Para las variables **numéricas** usamos `summarytools::dfSummary()`, que
+muestra histogramas con escala relativa al rango de cada variable — más
+informativo que el histograma ASCII de skimr cuando las distribuciones
+son muy sesgadas. Para las variables **no numéricas** (texto, fecha,
+lógicas) se mantiene `skimr::skim()`, que reporta `n_missing`,
+`complete_rate` y estadísticos de carácter. Para la base geoespacial
 quitamos primero la geometría.
 
-```{r skim-dpf-geo}
-skimr::skim(sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf))
+```{r skim-dpf-geo-num}
+#| results: asis
+df_geo_plain <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf)
+print(
+  summarytools::dfSummary(
+    dplyr::select(df_geo_plain, where(is.numeric)),
+    graph.magnif  = 0.75,
+    valid.col     = FALSE,
+    headings      = FALSE
+  ),
+  method = "render"
+)
 ```
 
-```{r skim-dpf-temporal}
-skimr::skim(df_grd_2012_25_dpf)
+```{r skim-dpf-geo-cat}
+skimr::skim(dplyr::select(
+  sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf),
+  !where(is.numeric)
+))
+```
+
+```{r skim-dpf-temporal-num}
+#| results: asis
+print(
+  summarytools::dfSummary(
+    dplyr::select(df_grd_2012_25_dpf, where(is.numeric)),
+    graph.magnif  = 0.75,
+    valid.col     = FALSE,
+    headings      = FALSE
+  ),
+  method = "render"
+)
+```
+
+```{r skim-dpf-temporal-cat}
+skimr::skim(dplyr::select(df_grd_2012_25_dpf, !where(is.numeric)))
 ```
 
 ## Descripción de una inversión específica
@@ -509,54 +695,75 @@ cat("Inversión en foco:", cod_foco, "\n")
 ```
 
 ```{r inversion-foco-ejecutar}
+#| results: asis
 # Fila geoespacial de la inversión focalizada.
 fila_foco <- df_pu_geoinv_inv_g_dpf |>
-  dplyr::filter(COD_UNICO == cod_foco)
+  dplyr::filter(codigo_unico == cod_foco)
 
 if (nrow(fila_foco) == 0L) {
-  message("No se encontró el CODIGO_UNICO ", cod_foco,
+  message("No se encontró el codigo_unico ", cod_foco,
           " en la base geoespacial fusionada.")
 } else {
-  dplyr::glimpse(sf::st_drop_geometry(fila_foco))
-
-  # Serie de tiempo asociada al proyecto (si existe).
-  # Se agrupa por ANIO porque el join puede traer varias filas por año
-  # (distintos registros de la misma inversión). Sumar PIA/PIM/DEVENGADO
-  # es correcto: son montos aditivos dentro del mismo proyecto.
-  serie_foco <- df_grd_2012_25_dpf |>
-    dplyr::filter(PRODUCTO_PROYECTO == cod_foco) |>
-    dplyr::group_by(ANIO) |>
-    dplyr::summarise(
-      PIA       = sum(PIA,       na.rm = TRUE),
-      PIM       = sum(PIM,       na.rm = TRUE),
-      DEVENGADO = sum(DEVENGADO, na.rm = TRUE),
-      .groups   = "drop"
+  # Tabla de atributos: una fila por variable con su valor actual.
+  tabla_fila <- fila_foco |>
+    sf::st_drop_geometry() |>
+    dplyr::mutate(
+      dplyr::across(where(is.numeric), ~scales::comma(., accuracy = 1))
     ) |>
-    dplyr::arrange(ANIO)
+    tidyr::pivot_longer(
+      cols             = dplyr::everything(),
+      names_to         = "variable",
+      values_to        = "valor",
+      values_transform = list(valor = as.character)
+    )
 
   # Acumular widgets HTML; knitr solo captura correctamente el HTML
-  # del último valor devuelto por el bloque externo. Colectar ambos
+  # del último valor devuelto por el bloque externo. Colectar todos
   # en una lista y devolverlos con tagList resuelve el problema de
   # widgets dentro de ramas condicionales anidadas.
   widgets_out <- list()
+
+  tabla_fila <- dplyr::mutate(tabla_fila, variable = label_var(variable))
+
+  print(knitr::kable(
+    tabla_fila,
+    format     = "html",
+    caption    = glue::glue("Atributos de la inversión {cod_foco}"),
+    table.attr = 'style="background-color: white;"'
+  ))
+
+  # Serie de tiempo asociada al proyecto (si existe).
+  # Se agrupa por anio porque el join puede traer varias filas por año
+  # (distintos registros de la misma inversión). Sumar pia/pim/devengado
+  # es correcto: son montos aditivos dentro del mismo proyecto.
+  serie_foco <- df_grd_2012_25_dpf |>
+    dplyr::filter(codigo_unico == cod_foco) |>
+    dplyr::group_by(anio) |>
+    dplyr::summarise(
+      pia       = sum(pia,       na.rm = TRUE),
+      pim       = sum(pim,       na.rm = TRUE),
+      devengado = sum(devengado, na.rm = TRUE),
+      .groups   = "drop"
+    ) |>
+    dplyr::arrange(anio)
 
   if (nrow(serie_foco) > 0L) {
     # Acumular cada métrica a lo largo del tiempo y convertir a formato
     # largo para graficar las tres series en un mismo eje.
     serie_largo <- serie_foco |>
-      dplyr::select(ANIO, PIA, PIM, DEVENGADO) |>
+      dplyr::select(anio, pia, pim, devengado) |>
       dplyr::mutate(
-        dplyr::across(c(PIA, PIM, DEVENGADO), cumsum)
+        dplyr::across(c(pia, pim, devengado), cumsum)
       ) |>
       tidyr::pivot_longer(
-        cols      = c(PIA, PIM, DEVENGADO),
+        cols      = c(pia, pim, devengado),
         names_to  = "metrica",
         values_to = "valor"
       )
 
     g <- ggplot2::ggplot(
       serie_largo,
-      ggplot2::aes(x = ANIO, y = valor, color = metrica)
+      ggplot2::aes(x = anio, y = valor, color = metrica)
     ) +
       ggplot2::geom_line(linewidth = 1) +
       ggplot2::geom_point() +
@@ -578,11 +785,11 @@ if (nrow(fila_foco) == 0L) {
     leaflet::addCircleMarkers(
       radius = 8, color = "red", fillOpacity = 0.8,
       popup = ~glue::glue(
-        "<b>{NOMBRE_INVERSION}</b><br>",
-        "Tipología: {DES_TIPOLOGIA}<br>",
-        "Monto viable: {scales::label_comma()(MONTO_VIABLE)}<br>",
+        "<b>{nombre_inversion}</b><br>",
+        "Tipología: {des_tipologia}<br>",
+        "Monto viable: {scales::label_comma()(monto_viable)}<br>",
         "Costo actualizado: ",
-        "{scales::label_comma()(COSTO_ACTUALIZADO)}"
+        "{scales::label_comma()(costo_actualizado)}"
       )
     )
 
@@ -597,10 +804,9 @@ Cargamos el diccionario oficial (si se logró descargar) y lo
 cruzamos con las columnas que sobrevivieron en la base
 `df_pu_geoinv_inv_g_dpf`. Si el diccionario no está disponible, o
 si alguna columna proviene del shapefile ESRI / fue generada en el
-procesamiento, redactamos la definición localmente.
+procesamiento, redactamos la definición localmente. 
 
 ```{r diccionario-actualizado}
-# Carga del diccionario con tolerancia a errores.
 dicc_oficial <- tryCatch({
   if (is.null(ruta_diccionario) || !file.exists(ruta_diccionario)) {
     NULL
@@ -612,29 +818,17 @@ dicc_oficial <- tryCatch({
   NULL
 })
 
-# Definiciones locales para columnas que no están en el diccionario
-# oficial (vienen del shapefile ESRI o fueron generadas).
-definiciones_locales <- tibble::tribble(
-  ~variable,        ~definicion_local,
-  "COD_UNICO",      "Código único del proyecto (llave). Viene de la capa ESRI del MEF; equivalente a CODIGO_UNICO.",
-  "CODIGO_PRO",     "Código interno del programa presupuestal (capa ESRI).",
-  "LINK_SSI",       "URL al expediente del proyecto en el SSI del MEF.",
-  "des_servicio",   "Descripción del servicio público asociado (capa ESRI).",
-  "des_tipologia",  "Tipología del servicio según la capa ESRI (suele replicar DES_TIPOLOGIA).",
-  "geometry",       "Geometría (POINT) en WGS84 con la ubicación del proyecto."
-)
-
 vars_finales <- names(df_pu_geoinv_inv_g_dpf)
 
 # Intento de match con el diccionario oficial (cuando existe).
+# Los nombres del CSV del MEF vienen en MAYÚSCULAS; se normalizan a
+# snake_case con make_clean_names para que coincidan con vars_finales.
 diccionario_final <- tibble::tibble(variable = vars_finales) |>
   dplyr::left_join(
     if (!is.null(dicc_oficial)) {
-      # Normalizamos nombres de la primera columna del diccionario:
-      # en el CSV del MEF suele ser "Nombre del Campo" o similar.
       tibble::tibble(
-        variable    = as.character(dicc_oficial[[1]]),
-        definicion  = as.character(dicc_oficial[[2]])
+        variable    = janitor::make_clean_names(as.character(dicc_oficial[[1]])),
+        definicion  = as.character(dicc_oficial[[3]])
       )
     } else {
       tibble::tibble(variable = character(),
@@ -643,45 +837,47 @@ diccionario_final <- tibble::tibble(variable = vars_finales) |>
     by = "variable"
   ) |>
   dplyr::left_join(definiciones_locales, by = "variable") |>
+  dplyr::left_join(nombres_comunes, by = "variable") |>
   dplyr::mutate(
     definicion = dplyr::coalesce(
-      definicion, definicion_local,
+      definicion_local, definicion,
       "No está en el diccionario original (revisar)."
     )
   ) |>
-  dplyr::select(variable, definicion)
+  dplyr::select(variable, nombre_comun, definicion)
 
 DT::datatable(
   diccionario_final,
-  rownames = FALSE,
-  options  = list(pageLength = 15, scrollX = TRUE),
-  caption  = "Diccionario de variables de df_pu_geoinv_inv_g_dpf"
+  rownames  = FALSE,
+  options   = list(pageLength = 15, scrollX = TRUE),
+  caption   = "Diccionario de variables de df_pu_geoinv_inv_g_dpf",
+  colnames  = c("Variable", "Nombre común", "Definición")
 )
 ```
 
-## Promedios por `DES_TIPOLOGIA`
+## Promedios por `des_tipologia`
 
 ```{r tabla-promedios-tipologia}
 tabla_tipologia <- df_pu_geoinv_inv_g_dpf |>
   sf::st_drop_geometry() |>
-  dplyr::filter(!is.na(DES_TIPOLOGIA)) |>
-  dplyr::group_by(DES_TIPOLOGIA) |>
+  dplyr::filter(!is.na(des_tipologia)) |>
+  dplyr::group_by(des_tipologia) |>
   dplyr::summarise(
     n_proyectos            = dplyr::n(),
-    costo_actualizado_prom = mean(COSTO_ACTUALIZADO, na.rm = TRUE),
-    monto_viable_prom      = mean(MONTO_VIABLE,      na.rm = TRUE),
+    costo_actualizado_prom = mean(costo_actualizado, na.rm = TRUE),
+    monto_viable_prom      = mean(monto_viable,      na.rm = TRUE),
     .groups                = "drop"
   ) |>
   dplyr::arrange(dplyr::desc(costo_actualizado_prom))
 
 DT::datatable(
-  tabla_tipologia,
+  dplyr::rename_with(tabla_tipologia, label_var),
   rownames = FALSE,
   options  = list(pageLength = 15, scrollX = TRUE),
-  caption  = "Promedios por DES_TIPOLOGIA"
+  caption  = "Promedios por tipología"
 ) |>
   DT::formatRound(
-    c("costo_actualizado_prom", "monto_viable_prom"),
+    label_var(c("costo_actualizado_prom", "monto_viable_prom")),
     digits = 0, mark = ","
   )
 ```
@@ -690,10 +886,10 @@ DT::datatable(
 
 Calculamos dos columnas:
 
-- `pct_costo_vs_viable` = cambio porcentual de `COSTO_ACTUALIZADO`
-  respecto de `MONTO_VIABLE`.
-- `pct_pim_vs_pia` = cambio porcentual del `PIM_ANIO_ACTUAL`
-  respecto del `PIA_ANIO_ACTUAL`.
+- `pct_costo_vs_viable` = cambio porcentual de `costo_actualizado`
+  respecto de `monto_viable`.
+- `pct_pim_vs_pia` = cambio porcentual del `pim_anio_actual`
+  respecto del `pia_anio_actual`.
 
 > **Nota sobre la semántica.** El pedido original en `plan_0.md`
 > dice literalmente "PIA respecto del PIM". En la práctica
@@ -708,27 +904,27 @@ tabla_crecimiento <- df_pu_geoinv_inv_g_dpf |>
   sf::st_drop_geometry() |>
   dplyr::mutate(
     pct_costo_vs_viable = dplyr::if_else(
-      is.finite(MONTO_VIABLE) & MONTO_VIABLE != 0,
-      (COSTO_ACTUALIZADO - MONTO_VIABLE) / MONTO_VIABLE * 100,
+      is.finite(monto_viable) & monto_viable != 0,
+      (costo_actualizado - monto_viable) / monto_viable * 100,
       NA_real_
     ),
     pct_pim_vs_pia = dplyr::if_else(
-      is.finite(PIA_ANIO_ACTUAL) & PIA_ANIO_ACTUAL != 0,
-      (PIM_ANIO_ACTUAL - PIA_ANIO_ACTUAL) / PIA_ANIO_ACTUAL * 100,
+      is.finite(pia_anio_actual) & pia_anio_actual != 0,
+      (pim_anio_actual - pia_anio_actual) / pia_anio_actual * 100,
       NA_real_
     )
   ) |>
   dplyr::select(
-    COD_UNICO, NOMBRE_INVERSION, DES_TIPOLOGIA,
-    MONTO_VIABLE, COSTO_ACTUALIZADO, pct_costo_vs_viable,
-    PIA_ANIO_ACTUAL, PIM_ANIO_ACTUAL, pct_pim_vs_pia
+    codigo_unico, nombre_inversion, des_tipologia,
+    monto_viable, costo_actualizado, pct_costo_vs_viable,
+    pia_anio_actual, pim_anio_actual, pct_pim_vs_pia
   )
 
 DT::datatable(
-  tabla_crecimiento,
+  dplyr::rename_with(tabla_crecimiento, label_var),
   rownames = FALSE,
   filter   = "top",
-  # order: columna 5 (COSTO_ACTUALIZADO, índice 0-based = 4) descendente.
+  # order: columna 5 (costo_actualizado, índice 0-based = 4) descendente.
   options  = list(
     pageLength = 10,
     scrollX    = FALSE,
@@ -743,12 +939,12 @@ DT::datatable(
   caption  = "Crecimientos porcentuales por proyecto"
 ) |>
   DT::formatRound(
-    c("MONTO_VIABLE", "COSTO_ACTUALIZADO",
-      "PIA_ANIO_ACTUAL", "PIM_ANIO_ACTUAL"),
+    label_var(c("monto_viable", "costo_actualizado",
+                "pia_anio_actual", "pim_anio_actual")),
     digits = 0, mark = ","
   ) |>
   DT::formatRound(
-    c("pct_costo_vs_viable", "pct_pim_vs_pia"),
+    label_var(c("pct_costo_vs_viable", "pct_pim_vs_pia")),
     digits = 1
   )
 ```
@@ -761,14 +957,14 @@ Algunas recomendaciones que notamos durante el armado del cuaderno:
    proyecto. Usa `renv::restore()` al clonar el repo en vez de
    depender del `if (!require(...))` (que instala en la librería
    del usuario).
-2. **Nombres con tildes.** El filtro por `PROGRAMA` puede romperse
+2. **Nombres con tildes.** El filtro por `programa` puede romperse
    si la fuente cambia la codificación. Aquí normalizamos con
    `stringi::stri_trans_general` para ser tolerantes.
 3. **PIA vs PIM.** La dirección del cambio porcentual importa — ver
    nota en la sección anterior.
-4. **Llaves como character.** `CODIGO_UNICO`, `COD_UNICO` y
-   `PRODUCTO_PROYECTO` viajan siempre como `character` para evitar
-   coerciones silenciosas en los joins.
+4. **Llave como character.** `codigo_unico` viaja siempre como
+   `character` en las tres bases para evitar coerciones silenciosas
+   en los joins.
 5. **`duckdb` si escalas.** Si en el futuro `df_det_inv` deja de
    caber en memoria, considerar `duckdb` con lectura
    *out-of-memory* en vez de `fread + select`.

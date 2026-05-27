@@ -3,3 +3,5 @@
 .RData
 .Ruserdata
 folder_xyz_ignore/
+*.csv
+*.gpkg
