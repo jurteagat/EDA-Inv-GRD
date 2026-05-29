@@ -90,6 +90,16 @@ quarto render EDA_Inv_GRD_v1.qmd
 
 El HTML resultante (`EDA_Inv_GRD_v1.html`) es autocontenido (`embed-resources: true`) y se puede compartir sin dependencias externas.
 
+### 5. Ejecutar el dashboard Shiny
+
+Versión interactiva del cuaderno con filtros de tipología, departamento y estado. Comparte los mismos RDS de `midputs/rds/`.
+
+```r
+shiny::runApp()
+```
+
+Archivos: `app.R` (UI + server) y `global.R` (precarga y precómputo). Usa los mismos paquetes que ya están pinneados en `renv.lock` (incluido `shiny` y `bslib`), por lo que no se requieren instalaciones adicionales.
+
 ---
 
 ## Contenido del cuaderno
