@@ -51,7 +51,7 @@ Riesgos y Emergencias*. Combina tres fuentes:
 3. **`df_grd_2012_25`** — Serie de tiempo de ejecución de gasto
    2012-2025 (archivo interno en `midputs/`).
 
-El cuaderno está escrito con fines educativos: cada paso va
+El cuaderno está escrito didácticamente: cada paso va
 comentado y se explica *por qué* se hace, no solo *qué* se hace.
 Todos los chunks muestran warnings, mensajes y errores al renderizar
 para que el lector obtenga una imagen realista del proceso.
@@ -206,8 +206,8 @@ nombres_comunes <- tibble::tribble(
 
 definiciones_locales <- tibble::tribble(
   ~variable,              ~definicion_local,
-  "codigo_pro",           "Código interno del programa presupuestal (capa ESRI).",
-  "link_ssi",             "URL al expediente del proyecto en el SSI del MEF.",
+  "codigo_pro",           "Código interno del programa de inversiones (capa ESRI).",
+  "link_ssi",             "URL a la inversión en el SSI del MEF (capa ESRI).",
   "des_servicio",         "Descripción del servicio público asociado (capa ESRI).",
   "des_tipologia_esri",   "Tipología según la capa ESRI; puede diferir de des_tipologia del diccionario MEF.",
   "geometry",             "Geometría (POINT) en WGS84 con la ubicación del proyecto."
@@ -430,7 +430,7 @@ df_pu_geoinv_inv_g_dp <- df_pu_geoinv_inv_g |>
 cat(glue::glue(
   "Puntos únicos por codigo_unico (universo común): {nrow(df_pu_geoinv_inv_g_dp)}\n"
 ))
-
+# [POR ENTENDER]
 rm(df_pu_geoinv_inv_g); invisible(gc())
 ```
 
@@ -505,8 +505,9 @@ muestra histogramas con escala relativa al rango de cada variable — más
 informativo que el histograma ASCII de skimr cuando las distribuciones
 son muy sesgadas. Para las variables **no numéricas** (texto, fecha,
 lógicas) se mantiene `skimr::skim()`, que reporta `n_missing`,
-`complete_rate` y estadísticos de carácter. Para la base geoespacial
+`complete_rate` [POR ENTENDER] y estadísticos de carácter. Para la base geoespacial
 quitamos primero la geometría.
+[POSIXct POR ENTENDER]
 
 ```{r skim-dpf-geo-num}
 #| results: asis
@@ -554,7 +555,7 @@ sección contra otro proyecto.
 
 ```{r inversion-foco-input}
 cod_foco <- as.character(codigo_inv_foco)
-cat("Inversión en foco:", cod_foco, "\n")
+cat("Inversión focalizada:", cod_foco, "\n")
 ```
 
 ```{r inversion-foco-ejecutar}
@@ -599,6 +600,7 @@ if (nrow(fila_foco) == 0L) {
   # Se agrupa por anio porque el join puede traer varias filas por año
   # (distintos registros de la misma inversión). Sumar pia/pim/devengado
   # es correcto: son montos aditivos dentro del mismo proyecto.
+  # [POR ENTENDER]
   serie_foco <- df_grd_2012_25_dpf |>
     dplyr::filter(codigo_unico == cod_foco) |>
     dplyr::group_by(anio) |>
@@ -632,7 +634,7 @@ if (nrow(fila_foco) == 0L) {
       ggplot2::geom_point() +
       ggplot2::scale_y_continuous(labels = scales::label_comma()) +
       ggplot2::labs(
-        title = glue::glue("Ejecución acumulada 2012-2025 — {cod_foco}"),
+        title = glue::glue("Ejecución acumulada 2012-2025 — CUI {cod_foco}"),
         x = "Año", y = "Soles acumulados"
       ) +
       ggplot2::theme_minimal()
@@ -733,6 +735,8 @@ tabla_tipologia <- df_pu_geoinv_inv_g_dpf |>
   ) |>
   dplyr::arrange(dplyr::desc(costo_actualizado_prom))
 
+# [POR ENTENDER] ya no es necesario poner ungroup?
+
 DT::datatable(
   dplyr::rename_with(tabla_tipologia, label_var),
   rownames = FALSE,
@@ -766,6 +770,7 @@ Calculamos dos columnas:
 tabla_crecimiento <- df_pu_geoinv_inv_g_dpf |>
   sf::st_drop_geometry() |>
   dplyr::mutate(
+    # Crecimientos porcentuales.
     pct_costo_vs_viable = dplyr::if_else(
       is.finite(monto_viable) & monto_viable != 0,
       (costo_actualizado - monto_viable) / monto_viable * 100,
@@ -790,7 +795,7 @@ DT::datatable(
   # order: columna 5 (costo_actualizado, índice 0-based = 4) descendente.
   options  = list(
     pageLength = 10,
-    scrollX    = FALSE,
+    scrollX    = FALSE, # [POR ENTENDER]
     order      = list(list(4L, "desc")),
     # Fuente más pequeña para que las 9 columnas entren sin scroll.
     initComplete = DT::JS(
