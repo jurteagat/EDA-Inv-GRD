@@ -115,6 +115,7 @@ library(leaflet)
 library(leaflet.extras) # GitHub: trafficonese/leaflet.extras — incluido en renv.lock
 library(crosstalk)
 library(leafpop)
+library(bslib)          # Cards con botón de pantalla completa
 
 # --- Tablas y resúmenes ----------------------------------------------------
 library(DT)
@@ -643,13 +644,17 @@ if (nrow(fila_foco) == 0L) {
       ) +
       ggplot2::theme_minimal()
 
-    widgets_out[["grafica"]] <- plotly::ggplotly(g)
+    widgets_out[["grafica"]] <- bslib::card(
+      full_screen = TRUE,
+      bslib::card_header(glue::glue("Ejecución acumulada — CUI {cod_foco}")),
+      bslib::card_body(plotly::ggplotly(g))
+    )
   } else {
     message("No hay serie temporal para ", cod_foco)
   }
 
   # Mini-mapa leaflet centrado en el punto.
-  widgets_out[["mapa"]] <- leaflet::leaflet(fila_foco) |>
+  mapa_foco <- leaflet::leaflet(fila_foco) |>
     leaflet::addTiles() |>
     leaflet::addCircleMarkers(
       radius = 8, color = "red", fillOpacity = 0.8,
@@ -661,6 +666,11 @@ if (nrow(fila_foco) == 0L) {
         "{scales::label_comma()(costo_actualizado)}"
       )
     )
+  widgets_out[["mapa"]] <- bslib::card(
+    full_screen = TRUE,
+    bslib::card_header(glue::glue("Ubicación — CUI {cod_foco}")),
+    bslib::card_body(mapa_foco, padding = 0)
+  )
 
   # Devolver todos los widgets como una sola pieza HTML.
   htmltools::tagList(widgets_out)
@@ -836,36 +846,75 @@ logaritmo del costo actualizado (necesario porque los montos abarcan varios
 órdenes de magnitud).
 
 ```{r mapa-global-grd}
-# Paleta de colores discreta para tipología.
-# Se usa colorFactor() de leaflet porque la variable es categórica.
-tipologias_unicas <- unique(df_pu_geoinv_inv_g_dpf$des_tipologia)
+# Paleta de colores ordenada por frecuencia: las tipologías más comunes
+# reciben los colores con mayor separación perceptual (hue muy distinto).
+# Las tipologías raras heredan tonos grises desaturados — aparecen poco,
+# así que su distinguibilidad importa menos.
+tipologias_por_freq <- df_pu_geoinv_inv_g_dpf |>
+  sf::st_drop_geometry() |>
+  dplyr::count(des_tipologia, sort = TRUE) |>
+  dplyr::pull(des_tipologia)
+
+# Paleta de 12 colores de alto contraste (hand-picked maximizando separación
+# de matiz). Cubre las 12 tipologías más frecuentes con buena distinguibilidad.
+colores_alto_contraste <- c(
+  "#E41A1C",  # rojo
+  "#377EB8",  # azul
+  "#4DAF4A",  # verde
+  "#984EA3",  # morado
+  "#FF7F00",  # naranja
+  "#FFD92F",  # amarillo
+  "#A65628",  # marrón
+  "#F781BF",  # rosa
+  "#00CED1",  # turquesa
+  "#1F78B4",  # azul oscuro
+  "#6A3D9A",  # morado oscuro
+  "#B15928"   # naranja oscuro
+)
+
+# Para tipologías 13+ (cola larga): tonos grises desaturados que se
+# distinguen del grupo principal pero no compiten visualmente.
+colores_cola <- grDevices::gray.colors(
+  n     = max(0, length(tipologias_por_freq) - length(colores_alto_contraste)),
+  start = 0.5, end = 0.85
+)
+
+paleta_ordenada <- c(
+  colores_alto_contraste[seq_len(min(length(colores_alto_contraste),
+                                     length(tipologias_por_freq)))],
+  colores_cola
+)
+
 pal_tipologia <- leaflet::colorFactor(
-  palette = "Set1",
-  domain  = tipologias_unicas,
-  na.color = "#888888"
+  palette  = paleta_ordenada,
+  # IMPORTANTE: domain ordenado por frecuencia descendente — colorFactor
+  # asigna paleta en el orden de los levels.
+  levels   = tipologias_por_freq,
+  na.color = "#BBBBBB"
 )
 
 # Radio en píxeles proporcional a log10(costo + 1) para comprimir la escala.
-# Se normaliza entre 4 y 14 px para que sea legible a cualquier zoom.
+# Se normaliza entre 3 y 9 px: lo suficiente para distinguir tamaños sin
+# saturar la vista nacional cuando hay miles de puntos superpuestos.
 radios <- with(sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf), {
   log_costo <- log10(pmax(costo_actualizado, 1, na.rm = TRUE))
-  r_min <- 4; r_max <- 14
+  r_min <- 3; r_max <- 9
   r_min + (log_costo - min(log_costo, na.rm = TRUE)) /
     (max(log_costo, na.rm = TRUE) - min(log_costo, na.rm = TRUE) + 1e-9) *
     (r_max - r_min)
 })
 
-# addCircleMarkers no soporta clustering nativo; usamos addMarkers con íconos
-# de círculo personalizados (awesomeIcons no necesita dependencias extra).
 # Para un universo de pocos miles de puntos, el HTML embed-resources se
 # mantiene manejable sin clustering.
-leaflet::leaflet(df_pu_geoinv_inv_g_dpf) |>
+mapa <- leaflet::leaflet(df_pu_geoinv_inv_g_dpf) |>
   leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
   leaflet::addCircleMarkers(
     radius      = radios,
     color       = ~pal_tipologia(des_tipologia),
-    fillOpacity = 0.75,
-    stroke      = FALSE,
+    fillOpacity = 0.45,
+    stroke      = TRUE,
+    weight      = 0.4,
+    opacity     = 0.6,
     popup = ~glue::glue(
       "<b>{nombre_inversion}</b><br>",
       "<i>{des_tipologia}</i><br>",
@@ -873,15 +922,61 @@ leaflet::leaflet(df_pu_geoinv_inv_g_dpf) |>
       "Estado: {estado}<br>",
       "Costo actual.: S/ {scales::label_comma()(costo_actualizado)}<br>",
       "Av. ejecución: {avance_ejecucion}%"
+    ),
+    # Clustering ligero (maxClusterRadius bajo = solo agrupa puntos muy
+    # cercanos) + spiderfy: al llegar al zoom máximo, los puntos que
+    # comparten ubicación se despliegan radialmente para poder clickearlos
+    # individualmente sin que el color se mezcle.
+    clusterOptions = leaflet::markerClusterOptions(
+      maxClusterRadius           = 25,
+      spiderfyOnMaxZoom          = TRUE,
+      spiderfyDistanceMultiplier = 1.8,
+      showCoverageOnHover        = FALSE,
+      zoomToBoundsOnClick        = TRUE
     )
   ) |>
   leaflet::addLegend(
-    position = "bottomright",
-    pal      = pal_tipologia,
-    values   = ~des_tipologia,
-    title    = "Tipología",
-    opacity  = 0.8
+    position   = "bottomright",
+    pal        = pal_tipologia,
+    values     = ~des_tipologia,
+    title      = "Tipología",
+    opacity    = 0.8,
+    # className aplica la clase CSS definida abajo para controlar ancho y
+    # tamaño de fuente de la leyenda.
+    className  = "info legend leyenda-tipologia"
   )
+
+# CSS local: limita el ancho de la leyenda y permite el salto de línea
+# en etiquetas largas. Se inyecta junto con el card para que viaje en el
+# HTML autocontenido.
+css_leyenda <- htmltools::tags$style(htmltools::HTML("
+  .leaflet-container .leyenda-tipologia,
+  .leaflet-container .leyenda-tipologia * {
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+  .leaflet-container .leyenda-tipologia {
+    max-width: 200px !important;
+    padding: 4px 6px !important;
+    white-space: normal !important;
+  }
+  .leaflet-container .leyenda-tipologia i {
+    width: 10px !important;
+    height: 10px !important;
+    margin-right: 4px !important;
+  }
+"))
+
+# bslib::card con full_screen = TRUE agrega un botón en la esquina
+# inferior-derecha para expandir a pantalla completa.
+htmltools::tagList(
+  css_leyenda,
+  bslib::card(
+    full_screen = TRUE,
+    bslib::card_header("Mapa global de inversiones GRD"),
+    bslib::card_body(mapa, padding = 0)
+  )
+)
 ```
 
 ## Cortes geográficos por departamento
@@ -973,7 +1068,11 @@ g_deptos <- ggplot2::ggplot(
   ) +
   ggplot2::theme_minimal()
 
-plotly::ggplotly(g_deptos, tooltip = c("y", "text"))
+bslib::card(
+  full_screen = TRUE,
+  bslib::card_header("Top 15 departamentos por costo"),
+  bslib::card_body(plotly::ggplotly(g_deptos, tooltip = c("y", "text")))
+)
 ```
 
 ## Distribuciones de montos (escala logarítmica)
@@ -1012,7 +1111,7 @@ df_montos_largo <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
     )
   )
 
-ggplot2::ggplot(
+g_montos <- ggplot2::ggplot(
   df_montos_largo,
   ggplot2::aes(x = valor)
 ) +
@@ -1031,6 +1130,12 @@ ggplot2::ggplot(
     y     = "Frecuencia"
   ) +
   ggplot2::theme_minimal()
+
+bslib::card(
+  full_screen = TRUE,
+  bslib::card_header("Distribuciones de montos"),
+  bslib::card_body(g_montos)
+)
 ```
 
 ## Distribuciones de avances por estado del proyecto
@@ -1058,7 +1163,7 @@ df_avances <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
     )
   )
 
-ggplot2::ggplot(
+g_avances <- ggplot2::ggplot(
   df_avances,
   ggplot2::aes(x = estado, y = valor, fill = estado)
 ) +
@@ -1074,6 +1179,12 @@ ggplot2::ggplot(
   ggplot2::theme_minimal() +
   ggplot2::theme(legend.position = "none",
                  axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
+
+bslib::card(
+  full_screen = TRUE,
+  bslib::card_header("Avance físico y de ejecución por estado"),
+  bslib::card_body(g_avances)
+)
 ```
 
 ## Detección de outliers de costo por tipología
@@ -1188,7 +1299,11 @@ g_serie <- ggplot2::ggplot(
   ) +
   ggplot2::theme_minimal()
 
-plotly::ggplotly(g_serie, tooltip = c("x", "text"))
+bslib::card(
+  full_screen = TRUE,
+  bslib::card_header("Evolución anual PIA / PIM / Devengado"),
+  bslib::card_body(plotly::ggplotly(g_serie, tooltip = c("x", "text")))
+)
 ```
 
 ## Ratios de ejecución y ampliación presupuestal por año
@@ -1241,7 +1356,11 @@ g_ratios <- ggplot2::ggplot(
   ) +
   ggplot2::theme_minimal()
 
-plotly::ggplotly(g_ratios, tooltip = c("x", "text"))
+bslib::card(
+  full_screen = TRUE,
+  bslib::card_header("Ratios de ejecución y ampliación presupuestal"),
+  bslib::card_body(plotly::ggplotly(g_ratios, tooltip = c("x", "text")))
+)
 ```
 
 ## Top 10 entidades y tipologías por devengado acumulado 2012-2025
