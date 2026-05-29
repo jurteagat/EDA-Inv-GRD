@@ -201,7 +201,11 @@ nombres_comunes <- tibble::tribble(
   "costo_actualizado_prom",   "Costo actual. (prom.)",
   "monto_viable_prom",        "Monto viable (prom.)",
   "pct_costo_vs_viable",      "% Costo vs. viable",
-  "pct_pim_vs_pia",           "% PIM vs. PIA"
+  "pct_pim_vs_pia",           "% PIM vs. PIA",
+  "departamento",             "Departamento",
+  "pct_ejecucion",            "% Ejecución (Deveng./PIM)",
+  "pct_pim_pia",              "% PIM vs. PIA (portafolio)",
+  "devengado_acum",           "Deveng. acum. 2012-2025"
 )
 
 definiciones_locales <- tibble::tribble(
@@ -815,6 +819,472 @@ DT::datatable(
     label_var(c("pct_costo_vs_viable", "pct_pim_vs_pia")),
     digits = 1
   )
+```
+
+# Análisis avanzado
+
+## Mapa global de inversiones GRD
+
+El mapa anterior solo mostraba la inversión focalizada. Aquí desplegamos
+**todas** las inversiones del universo común para ver su distribución
+espacial a nivel nacional.
+
+Los marcadores se agrupan automáticamente (*clustering*) al alejarse y se
+expanden al acercarse, lo que evita saturar la pantalla con miles de puntos.
+El **color** identifica la tipología y el **radio** es proporcional al
+logaritmo del costo actualizado (necesario porque los montos abarcan varios
+órdenes de magnitud).
+
+```{r mapa-global-grd}
+# Paleta de colores discreta para tipología.
+# Se usa colorFactor() de leaflet porque la variable es categórica.
+tipologias_unicas <- unique(df_pu_geoinv_inv_g_dpf$des_tipologia)
+pal_tipologia <- leaflet::colorFactor(
+  palette = "Set1",
+  domain  = tipologias_unicas,
+  na.color = "#888888"
+)
+
+# Radio en píxeles proporcional a log10(costo + 1) para comprimir la escala.
+# Se normaliza entre 4 y 14 px para que sea legible a cualquier zoom.
+radios <- with(sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf), {
+  log_costo <- log10(pmax(costo_actualizado, 1, na.rm = TRUE))
+  r_min <- 4; r_max <- 14
+  r_min + (log_costo - min(log_costo, na.rm = TRUE)) /
+    (max(log_costo, na.rm = TRUE) - min(log_costo, na.rm = TRUE) + 1e-9) *
+    (r_max - r_min)
+})
+
+# addCircleMarkers no soporta clustering nativo; usamos addMarkers con íconos
+# de círculo personalizados (awesomeIcons no necesita dependencias extra).
+# Para un universo de pocos miles de puntos, el HTML embed-resources se
+# mantiene manejable sin clustering.
+leaflet::leaflet(df_pu_geoinv_inv_g_dpf) |>
+  leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
+  leaflet::addCircleMarkers(
+    radius      = radios,
+    color       = ~pal_tipologia(des_tipologia),
+    fillOpacity = 0.75,
+    stroke      = FALSE,
+    popup = ~glue::glue(
+      "<b>{nombre_inversion}</b><br>",
+      "<i>{des_tipologia}</i><br>",
+      "Entidad: {entidad}<br>",
+      "Estado: {estado}<br>",
+      "Costo actual.: S/ {scales::label_comma()(costo_actualizado)}<br>",
+      "Av. ejecución: {avance_ejecucion}%"
+    )
+  ) |>
+  leaflet::addLegend(
+    position = "bottomright",
+    pal      = pal_tipologia,
+    values   = ~des_tipologia,
+    title    = "Tipología",
+    opacity  = 0.8
+  )
+```
+
+## Cortes geográficos por departamento
+
+El campo `ubigeo` sigue el estándar INEI: los **dos primeros dígitos**
+identifican el departamento (p. ej., `15` = Lima, `06` = Cajamarca).
+Lo extraemos con `stringr::str_sub()` y cruzamos con un lookup inline
+de los 26 departamentos/regiones del Perú.
+
+```{r cortes-departamento}
+# Lookup de código de departamento (2 dígitos) a nombre.
+depto_lookup <- tibble::tribble(
+  ~cod_depto, ~departamento,
+  "01", "Amazonas",     "02", "Áncash",       "03", "Apurímac",
+  "04", "Arequipa",     "05", "Ayacucho",      "06", "Cajamarca",
+  "07", "Callao",       "08", "Cusco",          "09", "Huancavelica",
+  "10", "Huánuco",      "11", "Ica",            "12", "Junín",
+  "13", "La Libertad",  "14", "Lambayeque",     "15", "Lima",
+  "16", "Loreto",       "17", "Madre de Dios",  "18", "Moquegua",
+  "19", "Pasco",        "20", "Piura",           "21", "Puno",
+  "22", "San Martín",   "23", "Tacna",           "24", "Tumbes",
+  "25", "Ucayali",      "98", "Extranjero/SD"
+)
+
+df_geo_plain <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf)
+
+tabla_deptos <- df_geo_plain |>
+  dplyr::mutate(
+    cod_depto = stringr::str_sub(ubigeo, 1, 2),
+    # Algunos ubigeos son NA o tienen menos de 2 dígitos — tratarlos como SD.
+    cod_depto = dplyr::if_else(
+      !is.na(cod_depto) & nchar(cod_depto) == 2,
+      cod_depto, "98"
+    )
+  ) |>
+  dplyr::left_join(depto_lookup, by = "cod_depto") |>
+  dplyr::mutate(
+    departamento = dplyr::coalesce(departamento, glue::glue("Cod {cod_depto}"))
+  ) |>
+  dplyr::group_by(departamento) |>
+  dplyr::summarise(
+    n_proyectos         = dplyr::n(),
+    costo_total         = sum(costo_actualizado, na.rm = TRUE),
+    monto_viable_total  = sum(monto_viable,      na.rm = TRUE),
+    sobrecosto_prom_pct = mean(
+      dplyr::if_else(
+        is.finite(monto_viable) & monto_viable > 0,
+        (costo_actualizado - monto_viable) / monto_viable * 100,
+        NA_real_
+      ),
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(dplyr::desc(costo_total))
+
+# Verificar que la suma de proyectos por departamento = universo común.
+stopifnot(sum(tabla_deptos$n_proyectos) == length(codigos_grd_comunes))
+
+DT::datatable(
+  tabla_deptos,
+  rownames = FALSE,
+  filter   = "top",
+  options  = list(pageLength = 15, scrollX = TRUE),
+  caption  = "Inversiones GRD por departamento",
+  colnames = c("Departamento", "N° proyectos", "Costo total (S/)",
+               "Monto viable total (S/)", "% Sobrecosto prom.")
+) |>
+  DT::formatRound(c("costo_total", "monto_viable_total"), digits = 0, mark = ",") |>
+  DT::formatRound("sobrecosto_prom_pct", digits = 1)
+```
+
+```{r grafico-top15-deptos}
+# Top 15 por costo total — barra horizontal para que los nombres entren.
+top15_deptos <- tabla_deptos |>
+  dplyr::slice_head(n = 15) |>
+  dplyr::mutate(departamento = forcats::fct_reorder(departamento, costo_total))
+
+g_deptos <- ggplot2::ggplot(
+  top15_deptos,
+  ggplot2::aes(x = costo_total, y = departamento,
+               text = scales::label_comma()(costo_total))
+) +
+  ggplot2::geom_col(fill = "#2166AC") +
+  ggplot2::scale_x_continuous(labels = scales::label_comma()) +
+  ggplot2::labs(
+    title = "Top 15 departamentos por costo actualizado total",
+    x = "Costo actualizado total (S/)", y = NULL
+  ) +
+  ggplot2::theme_minimal()
+
+plotly::ggplotly(g_deptos, tooltip = c("y", "text"))
+```
+
+## Distribuciones de montos (escala logarítmica)
+
+Los montos de inversión pública suelen estar muy sesgados a la derecha:
+pocos proyectos grandes concentran la mayor parte del gasto mientras la
+mayoría son pequeños. Un histograma en escala lineal aplasta el grueso
+de la distribución. Por eso usamos **escala logarítmica en el eje x**:
+en esa escala la distribución se vuelve legible y los clústeres de
+proyectos de tamaño similar se distinguen claramente.
+
+Las cuatro variables que graficamos (`monto_viable`, `costo_actualizado`,
+`pia_anio_actual`, `pim_anio_actual`) corresponden a distintas etapas del
+ciclo presupuestal — verlas juntas revela si hay compresión o expansión
+sistemática en cada paso.
+
+```{r distrib-montos}
+# Pasar las cuatro variables a formato largo para usar facet_wrap().
+# Solo tomamos filas con valor > 0 porque log10(0) = -Inf.
+df_montos_largo <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
+  dplyr::select(monto_viable, costo_actualizado,
+                pia_anio_actual, pim_anio_actual) |>
+  tidyr::pivot_longer(
+    cols      = dplyr::everything(),
+    names_to  = "variable",
+    values_to = "valor"
+  ) |>
+  dplyr::filter(is.finite(valor) & valor > 0) |>
+  dplyr::mutate(
+    variable = dplyr::recode(
+      variable,
+      monto_viable      = "Monto viable",
+      costo_actualizado = "Costo actual.",
+      pia_anio_actual   = "PIA actual",
+      pim_anio_actual   = "PIM actual"
+    )
+  )
+
+ggplot2::ggplot(
+  df_montos_largo,
+  ggplot2::aes(x = valor)
+) +
+  ggplot2::geom_histogram(
+    bins  = 40, fill = "#4393C3", color = "white", alpha = 0.8
+  ) +
+  ggplot2::geom_density(
+    ggplot2::aes(y = ggplot2::after_stat(count)),
+    color = "#D6604D", linewidth = 0.8
+  ) +
+  ggplot2::scale_x_log10(labels = scales::label_comma()) +
+  ggplot2::facet_wrap(~variable, scales = "free_y", ncol = 2) +
+  ggplot2::labs(
+    title = "Distribución de montos (escala log₁₀)",
+    x     = "Soles (escala log₁₀)",
+    y     = "Frecuencia"
+  ) +
+  ggplot2::theme_minimal()
+```
+
+## Distribuciones de avances por estado del proyecto
+
+¿Los proyectos "Cerrados" realmente alcanzaron 100% de avance?
+¿Los "Activos" están distribuidos homogéneamente o se acumulan cerca
+de 0? Los boxplots permiten responder ambas preguntas de un vistazo.
+Los puntos individuales superpuestos (*jitter*) revelan valores extremos
+que el boxplot resumiría.
+
+```{r distrib-avances}
+df_avances <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
+  dplyr::filter(!is.na(estado)) |>
+  dplyr::select(estado, avance_fisico, avance_ejecucion) |>
+  tidyr::pivot_longer(
+    cols      = c(avance_fisico, avance_ejecucion),
+    names_to  = "tipo_avance",
+    values_to = "valor"
+  ) |>
+  dplyr::mutate(
+    tipo_avance = dplyr::recode(
+      tipo_avance,
+      avance_fisico    = "Avance físico (%)",
+      avance_ejecucion = "Avance ejecución (%)"
+    )
+  )
+
+ggplot2::ggplot(
+  df_avances,
+  ggplot2::aes(x = estado, y = valor, fill = estado)
+) +
+  ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  ggplot2::geom_jitter(width = 0.2, alpha = 0.15, size = 0.8) +
+  ggplot2::facet_wrap(~tipo_avance, ncol = 2) +
+  ggplot2::scale_y_continuous(limits = c(0, 100)) +
+  ggplot2::labs(
+    title = "Avance físico y de ejecución por estado del proyecto",
+    x     = "Estado",
+    y     = "Avance (%)"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(legend.position = "none",
+                 axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
+```
+
+## Detección de outliers de costo por tipología
+
+Un outlier global mezclaría tipologías de escalas muy distintas
+(una pista de aterrizaje no es comparable con una pared de encauzamiento).
+Usamos la regla de **Q3 + 3·IQR dentro de cada tipología** — es el
+umbral de "outlier extremo" de Tukey y es más conservador que el ±2σ
+habitual, apropiado cuando el objetivo es señalar casos verdaderamente
+atípicos para revisión presupuestal.
+
+```{r outliers-costo}
+# df_geo_plain fue definido en el chunk cortes-departamento.
+# Calcular límite de outlier por tipología.
+limites_iqr <- df_geo_plain |>
+  dplyr::filter(!is.na(des_tipologia) & !is.na(costo_actualizado)) |>
+  dplyr::group_by(des_tipologia) |>
+  dplyr::summarise(
+    q3  = quantile(costo_actualizado, 0.75, na.rm = TRUE),
+    iqr = IQR(costo_actualizado,           na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(limite_outlier = q3 + 3 * iqr)
+
+df_outliers <- df_geo_plain |>
+  dplyr::left_join(limites_iqr, by = "des_tipologia") |>
+  dplyr::filter(costo_actualizado > limite_outlier) |>
+  dplyr::mutate(
+    pct_costo_vs_viable = dplyr::if_else(
+      is.finite(monto_viable) & monto_viable > 0,
+      (costo_actualizado - monto_viable) / monto_viable * 100,
+      NA_real_
+    )
+  ) |>
+  dplyr::select(
+    codigo_unico, nombre_inversion, entidad,
+    des_tipologia, costo_actualizado, pct_costo_vs_viable
+  ) |>
+  dplyr::arrange(dplyr::desc(costo_actualizado))
+
+DT::datatable(
+  dplyr::rename_with(df_outliers, label_var),
+  rownames = FALSE,
+  filter   = "top",
+  options  = list(pageLength = 10, scrollX = TRUE),
+  caption  = glue::glue(
+    "Proyectos outlier de costo (> Q3 + 3·IQR dentro de su tipología) — ",
+    "{nrow(df_outliers)} casos"
+  )
+) |>
+  DT::formatRound(label_var(c("costo_actualizado")), digits = 0, mark = ",") |>
+  DT::formatRound(label_var(c("pct_costo_vs_viable")), digits = 1)
+```
+
+## Evolución anual del portafolio GRD (2012-2025)
+
+La serie temporal muestra cómo ha crecido — o caído — el presupuesto
+asignado y la ejecución del conjunto de inversiones del universo común.
+Observar PIA (inicial), PIM (modificado) y devengado juntos permite
+identificar años de expansión presupuestal fuerte y años de baja ejecución.
+
+> **Universo:** solo las inversiones presentes en los tres datasets
+> (`codigos_grd_comunes`), no la totalidad del gasto GRD del país.
+
+```{r serie-portafolio}
+# Agregar por año la suma de PIA, PIM y devengado del universo común.
+serie_portafolio <- data.table::as.data.table(df_grd_2012_25_dpf)[
+  , .(
+    pia       = sum(pia,       na.rm = TRUE),
+    pim       = sum(pim,       na.rm = TRUE),
+    devengado = sum(devengado, na.rm = TRUE)
+  ),
+  by = anio
+][order(anio)]
+
+# Verificar consistencia: suma total de devengado debe coincidir.
+stopifnot(
+  isTRUE(all.equal(
+    sum(serie_portafolio$devengado),
+    sum(df_grd_2012_25_dpf$devengado, na.rm = TRUE)
+  ))
+)
+
+serie_largo <- serie_portafolio |>
+  tidyr::pivot_longer(
+    cols      = c(pia, pim, devengado),
+    names_to  = "metrica",
+    values_to = "valor"
+  ) |>
+  dplyr::mutate(
+    metrica = dplyr::recode(
+      metrica,
+      pia = "PIA", pim = "PIM", devengado = "Devengado"
+    )
+  )
+
+g_serie <- ggplot2::ggplot(
+  serie_largo,
+  ggplot2::aes(x = anio, y = valor, color = metrica,
+               group = metrica,
+               text = paste0(metrica, ": S/ ", scales::label_comma()(valor)))
+) +
+  ggplot2::geom_line(linewidth = 1) +
+  ggplot2::geom_point(size = 2) +
+  ggplot2::scale_color_manual(
+    values = c(PIA = "#1A9850", PIM = "#4393C3", Devengado = "#D6604D")
+  ) +
+  ggplot2::scale_y_continuous(labels = scales::label_comma()) +
+  ggplot2::labs(
+    title   = "PIA, PIM y devengado anual del portafolio GRD",
+    x       = "Año", y = "Soles", color = NULL
+  ) +
+  ggplot2::theme_minimal()
+
+plotly::ggplotly(g_serie, tooltip = c("x", "text"))
+```
+
+## Ratios de ejecución y ampliación presupuestal por año
+
+Los montos absolutos del gráfico anterior no responden si el presupuesto
+*se ejecutó bien*. Estos dos ratios lo aclaran:
+
+- **% Ejecución** = Devengado / PIM × 100: qué porción del presupuesto
+  modificado se tradujo en gasto real. Un valor cercano al 100% indica
+  buena ejecución; por debajo del 80% es señal de alerta.
+- **% PIM/PIA** = PIM / PIA × 100: cuánto se amplió el presupuesto
+  inicial. Valores altos reflejan reasignaciones internas o adiciones
+  durante el año.
+
+```{r serie-ratios}
+serie_ratios <- serie_portafolio |>
+  dplyr::mutate(
+    pct_ejecucion = dplyr::if_else(pim > 0, devengado / pim * 100, NA_real_),
+    pct_pim_pia   = dplyr::if_else(pia > 0, pim      / pia * 100, NA_real_)
+  ) |>
+  dplyr::select(anio, pct_ejecucion, pct_pim_pia) |>
+  tidyr::pivot_longer(
+    cols      = c(pct_ejecucion, pct_pim_pia),
+    names_to  = "ratio",
+    values_to = "valor"
+  ) |>
+  dplyr::mutate(
+    ratio = dplyr::recode(
+      ratio,
+      pct_ejecucion = "% Ejecución (Dev./PIM)",
+      pct_pim_pia   = "% PIM vs. PIA"
+    )
+  )
+
+g_ratios <- ggplot2::ggplot(
+  serie_ratios,
+  ggplot2::aes(x = anio, y = valor, color = ratio, group = ratio,
+               text = paste0(ratio, ": ", round(valor, 1), "%"))
+) +
+  ggplot2::geom_line(linewidth = 1) +
+  ggplot2::geom_point(size = 2) +
+  ggplot2::scale_color_manual(
+    values = c("% Ejecución (Dev./PIM)" = "#D6604D",
+               "% PIM vs. PIA"         = "#4393C3")
+  ) +
+  ggplot2::scale_y_continuous(labels = ~paste0(., "%")) +
+  ggplot2::labs(
+    title = "Ratios de ejecución y ampliación presupuestal por año",
+    x = "Año", y = "Porcentaje (%)", color = NULL
+  ) +
+  ggplot2::theme_minimal()
+
+plotly::ggplotly(g_ratios, tooltip = c("x", "text"))
+```
+
+## Top 10 entidades y tipologías por devengado acumulado 2012-2025
+
+¿Quiénes concentran la mayor ejecución histórica? Las dos tablas siguientes
+muestran los principales ejecutores por **entidad** y por **tipología**.
+El devengado acumulado es el indicador más robusto de ejecución real porque
+es la etapa del ciclo que efectivamente genera obligación de pago.
+
+```{r top-entidades-tipologias}
+# ---- Top 10 entidades -------------------------------------------------------
+top_entidades <- data.table::as.data.table(df_grd_2012_25_dpf)[
+  , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = entidad
+][order(-devengado_acum)][1:10]
+
+dt_entidades <- DT::datatable(
+  dplyr::rename_with(top_entidades, label_var),
+  rownames = FALSE,
+  options  = list(pageLength = 10, dom = "t"),
+  caption  = "Top 10 entidades por devengado acumulado"
+) |>
+  DT::formatRound(label_var("devengado_acum"), digits = 0, mark = ",")
+
+# ---- Top 10 tipologías ------------------------------------------------------
+top_tipologias <- data.table::as.data.table(df_grd_2012_25_dpf)[
+  , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = des_tipologia
+][order(-devengado_acum)][1:10]
+
+dt_tipologias <- DT::datatable(
+  dplyr::rename_with(top_tipologias, label_var),
+  rownames = FALSE,
+  options  = list(pageLength = 10, dom = "t"),
+  caption  = "Top 10 tipologías por devengado acumulado"
+) |>
+  DT::formatRound(label_var("devengado_acum"), digits = 0, mark = ",")
+
+htmltools::tagList(
+  htmltools::h4("Por entidad"),
+  dt_entidades,
+  htmltools::br(),
+  htmltools::h4("Por tipología"),
+  dt_tipologias
+)
 ```
 
 # Sugerencias de buenas prácticas
