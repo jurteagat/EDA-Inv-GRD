@@ -136,6 +136,7 @@ library(leaflet.extras) # GitHub: trafficonese/leaflet.extras — incluido en re
 library(crosstalk)
 library(leafpop)
 library(bslib)          # Cards con botón de pantalla completa
+library(GGally)         # Matrices de scatterplots y boxplots
 
 # --- Tablas y resúmenes ----------------------------------------------------
 library(DT)
@@ -246,14 +247,15 @@ label_var <- function(vars) {
 }
 ```
 
-## Diccionario actualizado
+## Diccionario oficial de la fuente
 
-Cargamos el diccionario oficial del MEF desde `midputs/rds/diccionario.rds`
-y lo cruzamos con todas las variables del análisis definidas en
-`nombres_comunes`. Si alguna columna proviene de la capa ESRI o fue
-generada en el procesamiento, aportamos la definición local.
+Mostramos primero el diccionario oficial del MEF **tal cual** llega de la
+fuente de datos abiertos (`midputs/rds/diccionario.rds`). Sirve de
+referencia para ajustar luego las definiciones locales: cualquier
+definición que escribamos a mano puede contrastarse con la descripción
+oficial de esta tabla.
 
-```{r diccionario-actualizado}
+```{r diccionario-oficial}
 ruta_dicc_rds <- here::here("midputs", "rds", "diccionario.rds")
 dicc_oficial <- tryCatch(
   if (file.exists(ruta_dicc_rds)) {
@@ -266,6 +268,44 @@ dicc_oficial <- tryCatch(
     NULL
   }
 )
+
+if (!is.null(dicc_oficial)) {
+  DT::datatable(
+    dicc_oficial,
+    rownames = FALSE,
+    options  = list(pageLength = 15, scrollX = TRUE),
+    caption  = "Diccionario oficial del MEF (fuente de datos abiertos), sin modificar.",
+    colnames = c("Variable", "Tipo de dato", "Descripción")
+  )
+} else {
+  cat("Diccionario oficial no disponible: ejecuta 00_datos_entrada.qmd para generarlo.\n")
+}
+```
+
+## Diccionario actualizado
+
+Cargamos el diccionario oficial del MEF desde `midputs/rds/diccionario.rds`
+y lo cruzamos con todas las variables del análisis definidas en
+`nombres_comunes`. Si alguna columna proviene de la capa ESRI o fue
+generada en el procesamiento, aportamos la definición local.
+
+```{r diccionario-actualizado}
+# Reutiliza dicc_oficial ya cargado en el chunk anterior; solo lo lee de
+# nuevo si por algún motivo no existe (ejecución aislada de este chunk).
+if (!exists("dicc_oficial")) {
+  ruta_dicc_rds <- here::here("midputs", "rds", "diccionario.rds")
+  dicc_oficial <- tryCatch(
+    if (file.exists(ruta_dicc_rds)) {
+      data.table::as.data.table(readRDS(ruta_dicc_rds))
+    } else {
+      NULL
+    },
+    error = function(e) {
+      message("No se pudo leer diccionario.rds: ", conditionMessage(e))
+      NULL
+    }
+  )
+}
 
 # Universo de variables: todas las declaradas en nombres_comunes.
 vars_finales <- nombres_comunes$variable
@@ -408,11 +448,14 @@ df_det_inv[, .N, by = programa][order(-N)][1:15]
 dplyr::glimpse(df_pu_geoinv_inv_g)
 
 # ¿Cuántos puntos duplicados por codigo_unico hay? Lo necesitaremos al
-# depurar.
+# depurar. Mostramos también el nombre del proyecto (nombre_pro) para
+# reconocer qué inversiones están repetidas.
 df_pu_geoinv_inv_g |>
   sf::st_drop_geometry() |>
-  dplyr::count(codigo_unico, sort = TRUE) |>
+  dplyr::add_count(codigo_unico, name = "n") |>
   dplyr::filter(n > 1) |>
+  dplyr::distinct(codigo_unico, nombre_pro, n) |>
+  dplyr::arrange(dplyr::desc(n)) |>
   dplyr::slice_head(n = 10)
 ```
 
@@ -668,11 +711,126 @@ skimr::skim(dplyr::select(
 # En realidad no se considera relevante este análisis para una serie temporal.
 ```
 
+## Relaciones entre variables principales
+
+Exploramos las relaciones bivariadas de las **variables principales** de la
+base fusionada **no multitemporal** (`df_pu_geoinv_inv_g_dpf`, una fila por
+inversión). Elegimos un conjunto acotado para que las matrices sean legibles:
+monto viable, costo actualizado, PIM y devengado del año actual, y el avance
+de ejecución.
+
+### Matriz de dispersión con correlaciones
+
+`GGally::ggpairs` resume en una sola figura: la **diagonal** muestra la
+densidad de cada variable, el **triángulo inferior** los diagramas de
+dispersión y el **superior** el coeficiente de correlación de Pearson. Los
+montos van en escala `log10` (filtrando valores `> 0`), como manda la
+convención del cuaderno para variables monetarias: comprime los 6+ órdenes de
+magnitud y hace visibles las relaciones. Buscar correlaciones fuertes (p. ej.
+monto viable vs. costo actualizado) y la dispersión del avance de ejecución.
+
+```{r ggpairs-fusionada}
+#| fig-width: 9
+#| fig-height: 8
+# Variables principales (foco monetario + ejecución).
+vars_matriz <- c("monto_viable", "costo_actualizado",
+                 "pim_anio_actual", "dev_anio_actual", "avance_ejecucion")
+vars_monetarias <- c("monto_viable", "costo_actualizado",
+                     "pim_anio_actual", "dev_anio_actual")
+
+df_matriz <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
+  dplyr::select(dplyr::all_of(vars_matriz)) |>
+  # log10 de los montos (>0) para comprimir la escala; el avance queda igual.
+  dplyr::mutate(
+    dplyr::across(
+      dplyr::all_of(vars_monetarias),
+      ~dplyr::if_else(.x > 0, log10(.x), NA_real_)
+    )
+  )
+
+# Encabezados legibles; los montos quedan marcados como log10.
+etiquetas_matriz <- label_var(vars_matriz)
+etiquetas_matriz[vars_matriz %in% vars_monetarias] <- paste0(
+  "log10 ", etiquetas_matriz[vars_matriz %in% vars_monetarias]
+)
+
+g_pairs <- GGally::ggpairs(
+  df_matriz,
+  columnLabels = etiquetas_matriz,
+  upper = list(continuous = GGally::wrap("cor", size = 3)),
+  lower = list(continuous = GGally::wrap("points", alpha = 0.25, size = 0.5)),
+  diag  = list(continuous = "densityDiag"),
+  progress = FALSE
+) +
+  ggplot2::theme_minimal(base_size = 8)
+
+# ggpairs devuelve un objeto ggmatrix (no un ggplot ni un widget plotly):
+# se emite como figura estática. plotly::ggplotly no soporta ggmatrix y
+# bslib::card_body tampoco lo acepta directamente.
+g_pairs
+```
+
+### Matriz de boxplots por tipología
+
+Cada panel es una variable principal; dentro de cada uno comparamos su
+distribución entre las **tipologías más frecuentes** (top 8 por número de
+inversiones, para no saturar el eje). Los montos van en escala `log10`. Sirve
+para ver qué tipologías concentran los proyectos más caros o con mayor avance,
+y la dispersión interna de cada grupo.
+
+```{r boxplots-tipologia}
+# Top 8 tipologías por frecuencia (las demás saturarían el eje x).
+top_tipologias <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
+  dplyr::count(des_tipologia, sort = TRUE) |>
+  dplyr::slice_head(n = 8) |>
+  dplyr::pull(des_tipologia)
+
+df_box <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
+  dplyr::filter(des_tipologia %in% top_tipologias) |>
+  dplyr::select(des_tipologia, dplyr::all_of(vars_matriz)) |>
+  tidyr::pivot_longer(
+    cols      = dplyr::all_of(vars_matriz),
+    names_to  = "variable",
+    values_to = "valor"
+  ) |>
+  # Solo valores > 0 para que la escala log10 sea válida.
+  dplyr::filter(!is.na(valor), valor > 0) |>
+  dplyr::mutate(variable = label_var(variable))
+
+g_box <- ggplot2::ggplot(
+  df_box,
+  ggplot2::aes(x = des_tipologia, y = valor)
+) +
+  ggplot2::geom_boxplot(outlier.size = 0.5, fill = "#4393C3", alpha = 0.6) +
+  ggplot2::facet_wrap(~variable, scales = "free_y") +
+  ggplot2::scale_y_log10(labels = scales::label_comma()) +
+  ggplot2::labs(
+    title = "Distribución por tipología (top 8) de las variables principales",
+    x = NULL, y = "Valor (escala log10)"
+  ) +
+  ggplot2::theme_minimal(base_size = 8) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 6)
+  )
+
+bslib::card(
+  full_screen = TRUE,
+  bslib::card_header("Boxplots por tipología — variables principales"),
+  bslib::card_body(plotly::ggplotly(g_box))
+)
+```
+
 ## Descripción de una inversión específica
 
 El valor viene del chunk de "Opciones del usuario" al inicio del
 cuaderno. Cambia `codigo_inv_foco` ahí arriba para re-ejecutar esta
 sección contra otro proyecto.
+
+> La gráfica de ejecución muestra PIA, PIM y devengado **acumulados como
+> porcentaje del costo actualizado** de la inversión. El devengado
+> acumulado / costo es el avance real frente a lo que cuesta la obra; el
+> PIA y el PIM acumulados pueden superar el 100% por tratarse de
+> asignaciones anuales que se van sumando año a año.
 
 ```{r inversion-foco-input}
 cod_foco <- as.character(codigo_inv_foco)
@@ -734,6 +892,11 @@ if (nrow(fila_foco) == 0L) {
     dplyr::arrange(anio)
 
   if (nrow(serie_foco) > 0L) {
+    # Costo actualizado de la inversión (una sola fila por código en la
+    # base geoespacial fusionada). Sirve de denominador para expresar la
+    # ejecución como porcentaje.
+    costo_foco <- fila_foco$costo_actualizado[1]
+
     # Acumular cada métrica a lo largo del tiempo y convertir a formato
     # largo para graficar las tres series en un mismo eje.
     serie_largo <- serie_foco |>
@@ -747,21 +910,49 @@ if (nrow(fila_foco) == 0L) {
         values_to = "valor"
       )
 
-    g <- ggplot2::ggplot(
-      serie_largo,
-      ggplot2::aes(x = anio, y = valor, color = metrica)
-    ) +
-      ggplot2::geom_line(linewidth = 1) +
-      ggplot2::geom_point() +
-      ggplot2::scale_y_continuous(labels = scales::label_comma()) +
-      ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
-      ggplot2::labs(
-        title = glue::glue("Ejecución presupuestal acumulada 2012-2025 — CUI {cod_foco}"),
-        x = "Año", y = "Soles acumulados"
+    if (!is.na(costo_foco) && costo_foco > 0) {
+      # Expresar PIA/PIM/Devengado acumulados como % del costo actualizado.
+      serie_largo <- dplyr::mutate(
+        serie_largo, valor = valor / costo_foco * 100
+      )
+
+      g <- ggplot2::ggplot(
+        serie_largo,
+        ggplot2::aes(x = anio, y = valor, color = metrica)
       ) +
-      ggplot2::theme_minimal() +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1,
-                                                         size = 8))
+        ggplot2::geom_hline(yintercept = 100, linetype = "dashed",
+                            color = "grey50") +
+        ggplot2::geom_line(linewidth = 1) +
+        ggplot2::geom_point() +
+        ggplot2::scale_y_continuous(labels = ~paste0(., "%")) +
+        ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
+        ggplot2::labs(
+          title = glue::glue("Ejecución acumulada como % del costo actualizado — CUI {cod_foco}"),
+          x = "Año", y = "% del costo actualizado"
+        ) +
+        ggplot2::theme_minimal() +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1,
+                                                           size = 8))
+    } else {
+      # Sin costo actualizado válido: caer al gráfico en soles acumulados.
+      message("Costo actualizado inválido para ", cod_foco,
+              "; muestro la serie en soles.")
+      g <- ggplot2::ggplot(
+        serie_largo,
+        ggplot2::aes(x = anio, y = valor, color = metrica)
+      ) +
+        ggplot2::geom_line(linewidth = 1) +
+        ggplot2::geom_point() +
+        ggplot2::scale_y_continuous(labels = scales::label_comma()) +
+        ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
+        ggplot2::labs(
+          title = glue::glue("Ejecución presupuestal acumulada — CUI {cod_foco}"),
+          x = "Año", y = "Soles acumulados"
+        ) +
+        ggplot2::theme_minimal() +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1,
+                                                           size = 8))
+    }
 
     widgets_out[["grafica"]] <- bslib::card(
       full_screen = TRUE,
@@ -907,6 +1098,10 @@ El **color** identifica la tipología y el **radio** es proporcional al
 logaritmo del costo actualizado (necesario porque los montos abarcan varios
 órdenes de magnitud).
 
+El **control de capas** (esquina superior derecha) permite mostrar u ocultar
+cada tipología con sus casillas: útil para aislar uno o pocos tipos de
+inversión y leer su distribución espacial sin el ruido de las demás.
+
 ```{r mapa-global-grd}
 # Paleta de colores ordenada por frecuencia: las tipologías más comunes
 # reciben los colores con mayor separación perceptual (hue muy distinto).
@@ -968,39 +1163,58 @@ radios <- with(sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf), {
 
 # Para un universo de pocos miles de puntos, el HTML embed-resources se
 # mantiene manejable sin clustering.
-mapa <- leaflet::leaflet(df_pu_geoinv_inv_g_dpf) |>
-  leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
-  leaflet::addCircleMarkers(
-    radius      = radios,
-    color       = ~pal_tipologia(des_tipologia),
-    fillOpacity = 0.45,
-    stroke      = TRUE,
-    weight      = 0.4,
-    opacity     = 0.6,
-    popup = ~glue::glue(
-      "<b>{nombre_inversion}</b><br>",
-      "<i>{des_tipologia}</i><br>",
-      "Entidad: {entidad}<br>",
-      "Estado: {estado}<br>",
-      "Costo actual.: S/ {scales::label_comma()(costo_actualizado)}<br>",
-      "Av. ejecución: {avance_ejecucion}%"
-    ),
-    # Clustering ligero (maxClusterRadius bajo = solo agrupa puntos muy
-    # cercanos) + spiderfy: al llegar al zoom máximo, los puntos que
-    # comparten ubicación se despliegan radialmente para poder clickearlos
-    # individualmente sin que el color se mezcle.
-    clusterOptions = leaflet::markerClusterOptions(
-      maxClusterRadius           = 25,
-      spiderfyOnMaxZoom          = TRUE,
-      spiderfyDistanceMultiplier = 1.8,
-      showCoverageOnHover        = FALSE,
-      zoomToBoundsOnClick        = TRUE
+#
+# Una capa (group) por tipología: addLayersControl genera casillas para
+# encender/apagar cada tipología. El clustering opera por capa, así que la
+# vista nacional se mantiene casi igual y el spiderfy sigue funcionando.
+geo_plain_mapa <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf)
+
+mapa <- leaflet::leaflet() |>
+  leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron)
+
+for (tp in tipologias_por_freq) {
+  idx <- which(geo_plain_mapa$des_tipologia == tp)
+  mapa <- mapa |>
+    leaflet::addCircleMarkers(
+      data        = df_pu_geoinv_inv_g_dpf[idx, ],
+      group       = tp,
+      radius      = radios[idx],
+      color       = ~pal_tipologia(des_tipologia),
+      fillOpacity = 0.45,
+      stroke      = TRUE,
+      weight      = 0.4,
+      opacity     = 0.6,
+      popup = ~glue::glue(
+        "<b>{nombre_inversion}</b><br>",
+        "<i>{des_tipologia}</i><br>",
+        "Entidad: {entidad}<br>",
+        "Estado: {estado}<br>",
+        "Costo actual.: S/ {scales::label_comma()(costo_actualizado)}<br>",
+        "Av. ejecución: {avance_ejecucion}%"
+      ),
+      # Clustering ligero (maxClusterRadius bajo = solo agrupa puntos muy
+      # cercanos) + spiderfy: al llegar al zoom máximo, los puntos que
+      # comparten ubicación se despliegan radialmente para poder clickearlos
+      # individualmente sin que el color se mezcle.
+      clusterOptions = leaflet::markerClusterOptions(
+        maxClusterRadius           = 25,
+        spiderfyOnMaxZoom          = TRUE,
+        spiderfyDistanceMultiplier = 1.8,
+        showCoverageOnHover        = FALSE,
+        zoomToBoundsOnClick        = TRUE
+      )
     )
+}
+
+mapa <- mapa |>
+  leaflet::addLayersControl(
+    overlayGroups = tipologias_por_freq,
+    options       = leaflet::layersControlOptions(collapsed = TRUE)
   ) |>
   leaflet::addLegend(
     position   = "bottomright",
     pal        = pal_tipologia,
-    values     = ~des_tipologia,
+    values     = geo_plain_mapa$des_tipologia,
     title      = "Tipología",
     opacity    = 0.8,
     # className aplica la clase CSS definida abajo para controlar ancho y
@@ -1026,6 +1240,15 @@ css_leyenda <- htmltools::tags$style(htmltools::HTML("
     width: 10px !important;
     height: 10px !important;
     margin-right: 4px !important;
+  }
+  .leaflet-control-layers-list label,
+  .leaflet-control-layers-list span {
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+  }
+  .leaflet-control-layers {
+    max-height: 50vh;
+    overflow-y: auto;
   }
 "))
 
