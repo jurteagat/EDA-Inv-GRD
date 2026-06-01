@@ -22,6 +22,8 @@ params:
   gdrive_id_geoinv:      "1V1jRSqqgjeX7jJkhSag0b1ufB5PP9X2Z"
   gdrive_id_grd_12_25:   "1ZQHQOMFD8MG0r5pgDgcniUbZR_XGDGVq"
   gdrive_id_fechas:      "18jPh1hreHOM2_4VonCOlzt5IiU15STOx"
+  gsheet_id_nombres:       "1CImm-Go0uMllWueYmeHlUjlzmiBVPrJThny7pJbb8BM"
+  gdrive_id_nombres_abrev: "1_ielTIIhPjN-6jd9SF7w-LZrmSJRos04"
 ---
 
 # Arreglo YAML
@@ -89,6 +91,8 @@ if (params$leer_desde_local) {
 } else {
   cat("(flags de descarga MEF ignorados: leer_desde_local = FALSE)\n")
 }
+cat("gsheet_id_nombres      :", params$gsheet_id_nombres, "\n")
+cat("gdrive_id_nombres_abrev:", params$gdrive_id_nombres_abrev, "\n")
 ```
 
 ## Paquetes
@@ -103,6 +107,7 @@ library(sf)
 library(glue)
 library(stringr)
 library(googledrive)
+library(googlesheets4)
 library(httr)
 
 # Paquete para descargar la capa ESRI (solo usado en Sección 1 con descargar_gpkg = TRUE)
@@ -296,6 +301,12 @@ if (nzchar(params$gdrive_id_fechas)) {
   message("gdrive_id_fechas vacío: omito descarga del CSV de fechas.")
 }
 
+if (nzchar(params$gdrive_id_nombres_abrev)) {
+  descargar_rds_drive(params$gdrive_id_nombres_abrev, "nombres_abreviados.csv")
+} else {
+  message("gdrive_id_nombres_abrev vacío: omito descarga de nombres abreviados.")
+}
+
 message("Descarga completada. El cuaderno EDA ya puede leer desde midputs/rds/.")
 ```
 
@@ -351,9 +362,28 @@ message("Guardado: midputs/rds/grd_2012_25.rds")
 rm(df_grd_full); invisible(gc())
 ```
 
+```{r s2-nombres-abreviados, eval = params$leer_desde_local}
+googlesheets4::gs4_deauth()  # hoja pública: sin OAuth
+df_nombres <- googlesheets4::read_sheet(
+  googlesheets4::as_sheets_id(params$gsheet_id_nombres),
+  sheet     = "a_transferir",
+  col_types = "c"            # todo texto; CODIGO_UNICO no debe coercionarse
+)
+data.table::setDT(df_nombres)
+data.table::setnames(df_nombres, janitor::make_clean_names(names(df_nombres)))
+stopifnot(all(c("codigo_unico", "nom_inv_corto") %in% names(df_nombres)))
+df_nombres <- df_nombres[, .(codigo_unico = as.character(codigo_unico),
+                             nom_inv_corto = as.character(nom_inv_corto))]
+data.table::fwrite(df_nombres, here::here("midputs", "rds", "nombres_abreviados.csv"))
+cat("nombres_abreviados:", nrow(df_nombres), "filas;",
+    sum(!is.na(df_nombres$nom_inv_corto) & df_nombres$nom_inv_corto != ""),
+    "con nombre corto\n")
+```
+
 ```{r s2-verificar, eval = params$leer_desde_local}
-# Confirma que los 4 archivos existen y muestra su tamaño.
-rds_esperados <- c("det_inv.rds", "diccionario.rds", "geoinv.rds", "grd_2012_25.rds")
+# Confirma que los archivos existen y muestra su tamaño.
+rds_esperados <- c("det_inv.rds", "diccionario.rds", "geoinv.rds", "grd_2012_25.rds",
+                   "nombres_abreviados.csv")
 rutas_rds     <- here::here("midputs", "rds", rds_esperados)
 existe        <- file.exists(rutas_rds)
 tamanos_mb    <- round(file.size(rutas_rds) / 1024^2, 1)
@@ -438,6 +468,12 @@ if (nzchar(params$gdrive_id_fechas)) {
   subir_rds_drive(params$gdrive_id_fechas, "fechas_fuentes.csv")
 } else {
   message("gdrive_id_fechas vacío: omito subida del CSV de fechas (pega el ID en el YAML).")
+}
+
+if (nzchar(params$gdrive_id_nombres_abrev)) {
+  subir_rds_drive(params$gdrive_id_nombres_abrev, "nombres_abreviados.csv")
+} else {
+  message("gdrive_id_nombres_abrev vacío: omito subida de nombres abreviados.")
 }
 
 message("Subida completada. Verifica en Drive que los tamaños sean los esperados.")

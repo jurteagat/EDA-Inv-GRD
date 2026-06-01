@@ -194,6 +194,7 @@ nombres_comunes <- tibble::tribble(
   "nivel",                    "Nivel de Gobierno",
   "entidad",                  "Entidad",
   "nombre_inversion",         "Nombre inversión",
+  "nombre_abreviado",         "Nombre abreviado",
   "estado",                   "Estado",
   "situacion",                "Situación",
   "alternativa",              "Alternativa",
@@ -385,6 +386,16 @@ df_det_inv[, codigo_unico := as.character(codigo_unico)]
 # ("60" en vez de "06"). Castear apenas se lee, igual que codigo_unico.
 df_det_inv[, ubigeo := stringr::str_pad(as.character(ubigeo), width = 6,
                                         side = "left", pad = "0")]
+
+df_nombres_abrev <- data.table::fread(
+  here::here("midputs", "rds", "nombres_abreviados.csv"),
+  colClasses = c(codigo_unico = "character")
+)
+df_det_inv <- merge(df_det_inv, df_nombres_abrev, by = "codigo_unico", all.x = TRUE)
+# Fallback: si no hay abreviado, usar el nombre largo completo.
+df_det_inv[, nombre_abreviado := data.table::fifelse(
+  is.na(nom_inv_corto) | nom_inv_corto == "", nombre_inversion, nom_inv_corto)]
+df_det_inv[, nom_inv_corto := NULL]
 
 cat("df_det_inv dimensiones:", dim(df_det_inv), "\n")
 ```
@@ -969,7 +980,7 @@ if (nrow(fila_foco) == 0L) {
     leaflet::addCircleMarkers(
       radius = 8, color = "red", fillOpacity = 0.8,
       popup = ~glue::glue(
-        "<b>{nombre_inversion}</b><br>",
+        "<b>{nombre_abreviado}</b><br>",
         "Tipología: {des_tipologia}<br>",
         "Monto viable: {scales::label_comma()(monto_viable)}<br>",
         "Costo actualizado: ",
@@ -1050,7 +1061,7 @@ tabla_crecimiento <- df_pu_geoinv_inv_g_dpf |>
     )
   ) |>
   dplyr::select(
-    codigo_unico, nombre_inversion, des_tipologia,
+    codigo_unico, nombre_abreviado, des_tipologia,
     monto_viable, costo_actualizado, pct_costo_vs_viable,
     pia_anio_actual, pim_anio_actual, pct_pim_vs_pia
   )
@@ -1185,7 +1196,7 @@ for (tp in tipologias_por_freq) {
       weight      = 0.4,
       opacity     = 0.6,
       popup = ~glue::glue(
-        "<b>{nombre_inversion}</b><br>",
+        "<b>{nombre_abreviado}</b><br>",
         "<i>{des_tipologia}</i><br>",
         "Entidad: {entidad}<br>",
         "Estado: {estado}<br>",
@@ -1505,7 +1516,7 @@ df_outliers <- df_geo_plain |>
     )
   ) |>
   dplyr::select(
-    codigo_unico, nombre_inversion, entidad,
+    codigo_unico, nombre_abreviado, entidad,
     des_tipologia, costo_actualizado, pct_costo_vs_viable
   ) |>
   dplyr::arrange(dplyr::desc(costo_actualizado))
