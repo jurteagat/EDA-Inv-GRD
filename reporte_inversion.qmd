@@ -1,0 +1,123 @@
+---
+title: "Reporte de Inversión GRD"
+format:
+  typst:
+    margin:
+      x: 2cm
+      y: 2.5cm
+    font-size: 10pt
+params:
+  codigo: "2508148"
+  datos_rds: ""
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+  library(tidyr)
+  library(scales)
+  library(glue)
+})
+
+source(here::here("R/helpers.R"))
+
+datos <- readRDS(params$datos_rds)
+inv   <- datos$inv
+serie <- datos$serie
+```
+
+# `r if ("nombre_abreviado" %in% names(inv)) inv$nombre_abreviado[1] else inv$nombre_inversion[1]`
+
+**Código único:** `r params$codigo`
+
+---
+
+## Atributos principales
+
+```{r tabla-atributos, echo=FALSE}
+vars_mostrar <- c(
+  "codigo_unico", "nombre_inversion", "nombre_abreviado",
+  "des_tipologia", "entidad", "nivel", "estado", "situacion",
+  "monto_viable", "costo_actualizado", "avance_fisico", "avance_ejecucion",
+  "pia_anio_actual", "pim_anio_actual", "deven_acumul_anio_ant",
+  "ubigeo", "fec_ini_ejecucion", "num_habitants_benef",
+  "ind_ioarr_emerg", "tipo_inversion", "des_modalidad"
+)
+
+tabla_attr <- inv |>
+  sf::st_drop_geometry() |>
+  dplyr::select(dplyr::any_of(vars_mostrar)) |>
+  tidyr::pivot_longer(
+    dplyr::everything(),
+    names_to  = "Variable",
+    values_to = "Valor",
+    values_transform = list(Valor = as.character)
+  ) |>
+  dplyr::mutate(
+    Variable = label_var(Variable),
+    Valor    = dplyr::if_else(is.na(Valor) | Valor == "NA", "—", Valor)
+  )
+
+knitr::kable(tabla_attr, col.names = c("Variable", "Valor"))
+```
+
+---
+
+## Ejecución presupuestal acumulada (2012–2025)
+
+```{r grafico-serie, echo=FALSE, fig.width=7, fig.height=3.5}
+if (nrow(serie) > 0) {
+  serie_ag <- serie |>
+    dplyr::group_by(anio) |>
+    dplyr::summarise(
+      pia       = sum(pia,       na.rm = TRUE),
+      pim       = sum(pim,       na.rm = TRUE),
+      devengado = sum(devengado, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(anio) |>
+    dplyr::mutate(dplyr::across(c(pia, pim, devengado), cumsum)) |>
+    tidyr::pivot_longer(c(pia, pim, devengado),
+                        names_to  = "Métrica",
+                        values_to = "Soles") |>
+    dplyr::mutate(Métrica = dplyr::recode(
+      Métrica, pia = "PIA", pim = "PIM", devengado = "Devengado"
+    ))
+
+  ggplot2::ggplot(serie_ag,
+                  ggplot2::aes(x = anio, y = Soles, color = Métrica)) +
+    ggplot2::geom_line(linewidth = 0.9) +
+    ggplot2::geom_point(size = 1.8) +
+    ggplot2::scale_color_manual(
+      values = c(PIA = "#1A9850", PIM = "#4393C3", Devengado = "#D6604D")
+    ) +
+    ggplot2::scale_y_continuous(labels = scales::label_comma()) +
+    ggplot2::labs(x = "Año", y = "Soles acumulados", color = NULL) +
+    theme_grd()
+} else {
+  cat("_Sin datos de serie temporal para esta inversión._")
+}
+```
+
+---
+
+## Ubicación
+
+```{r ubicacion, echo=FALSE}
+coords_sf <- tryCatch(sf::st_coordinates(inv), error = function(e) NULL)
+if (!is.null(coords_sf) && nrow(coords_sf) > 0) {
+  cat(glue::glue(
+    "**Longitud:** {round(coords_sf[1,'X'], 5)}  \n",
+    "**Latitud:** {round(coords_sf[1,'Y'], 5)}  \n",
+    "**Ubigeo:** {inv$ubigeo[1]}"
+  ))
+} else {
+  cat("_Coordenadas no disponibles._")
+}
+```
+
+---
+
+*Generado automáticamente · Dashboard de Inversiones GRD Perú*

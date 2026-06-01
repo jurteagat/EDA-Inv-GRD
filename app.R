@@ -1,31 +1,52 @@
 # app.R — Dashboard Shiny de Inversiones GRD del Perú
 #
-# Versión interactiva de EDA_Inv_GRD_v1.qmd. Los datos y lookups se
-# precomputan una sola vez en global.R; aquí solo se filtran reactivamente.
+# Versión interactiva de EDA_Inv_GRD_v1.qmd.
+# Los datos se precomputan en global.R; aquí solo se filtran reactivamente.
+
+# Primer uso — calentar la caché desde la consola (solo una vez):
+#   Rscript -e 'source("global.R")'   # ~11 s; escribe midputs/rds/_cache_app.rds
+#   A partir de ahí el botón "Run App" en VS Code arranca en ~1-2 s. Para forzar rebuild:
+#   GRD_REBUILD_CACHE=1 Rscript -e 'source("global.R")'.
 
 source("global.R", local = FALSE)
 
 # ============================================================================
-# UI
+# Helpers de UI
 # ============================================================================
 
 card_widget <- function(titulo, ..., padding = NULL) {
   bslib::card(
     full_screen = TRUE,
     bslib::card_header(titulo),
-    if (is.null(padding)) bslib::card_body(...) else bslib::card_body(..., padding = padding)
+    if (is.null(padding))
+      bslib::card_body(...)
+    else
+      bslib::card_body(..., padding = padding)
   )
 }
 
+# ============================================================================
+# UI
+# ============================================================================
+
 ui <- bslib::page_navbar(
   title = "Inversiones GRD — Perú",
-  theme = bslib::bs_theme(version = 5, bootswatch = "flatly"),
+  theme = bslib::bs_theme(
+    version    = 5,
+    bootswatch = "flatly",
+    font_scale = 0.7,
+    base_font  = bslib::font_google("Inter", wght = c(400, 600),
+                                    local = FALSE),
+    heading_font = bslib::font_google("Inter", wght = 700, local = FALSE)
+  ),
   fillable = TRUE,
-  header = htmltools::tagList(css_leyenda),
+  header   = htmltools::tagList(css_leyenda),
 
   sidebar = bslib::sidebar(
-    width = 320,
-    title = "Filtros globales",
+    id     = "sidebar_principal",
+    width  = 300,
+    title  = "Filtros",
+    open   = list(desktop = "open", mobile = "closed"),
     shiny::selectizeInput(
       "f_tipologia", "Tipología",
       choices  = opciones_tipologia,
@@ -44,138 +65,214 @@ ui <- bslib::page_navbar(
       multiple = TRUE,
       options  = list(placeholder = "Todos los estados")
     ),
+    shiny::selectizeInput(
+      "f_situacion", "Situación",
+      choices  = opciones_situacion,
+      multiple = TRUE,
+      options  = list(placeholder = "Todas las situaciones")
+    ),
+    shiny::selectInput(
+      "f_ioarr", "IOARR/Emergencia",
+      choices  = opciones_ioarr,
+      selected = "Todos"
+    ),
     shiny::actionButton("reset", "Limpiar filtros",
-                        icon = shiny::icon("rotate-left"),
-                        class = "btn-outline-secondary btn-sm"),
+                        icon  = shiny::icon("rotate-left"),
+                        class = "btn-outline-secondary btn-sm w-100"),
     htmltools::hr(),
     shiny::textOutput("n_filtrados"),
     htmltools::tags$small(
       htmltools::tags$em(
-        "Los filtros aplican a las pestañas Resumen, Mapa, ",
-        "Distribuciones y Evolución temporal. ",
-        "La pestaña Inversión específica opera sobre el universo completo."
+        "Filtros activos en Resumen, Mapa, Distribuciones, Evolución temporal ",
+        "y Departamentos. Inversión específica usa el universo completo."
       ),
-      style = "color:#666;"
+      style = "color:#777;"
     )
   ),
 
-  # ---- Pestaña: Resumen ---------------------------------------------------
+  # ---- Pestaña: Resumen ----------------------------------------------------
   bslib::nav_panel(
     "Resumen",
     bslib::layout_columns(
       fill = FALSE,
-      bslib::value_box(
-        "Proyectos",
-        shiny::textOutput("kpi_n", inline = TRUE),
-        theme = "primary"
-      ),
-      bslib::value_box(
-        "Costo actual. total (S/)",
-        shiny::textOutput("kpi_costo", inline = TRUE),
-        theme = "success"
-      ),
-      bslib::value_box(
-        "Monto viable total (S/)",
-        shiny::textOutput("kpi_viable", inline = TRUE),
-        theme = "info"
-      ),
-      bslib::value_box(
-        "Av. ejecución medio",
-        shiny::textOutput("kpi_avance", inline = TRUE),
-        theme = "warning"
-      )
+      col_widths = bslib::breakpoints(sm = c(6, 6, 6, 6), lg = c(3, 3, 3, 3)),
+      bslib::value_box("Proyectos",
+                       shiny::textOutput("kpi_n", inline = TRUE),
+                       theme = "primary"),
+      bslib::value_box("Costo actual. total (S/)",
+                       shiny::textOutput("kpi_costo", inline = TRUE),
+                       theme = "success"),
+      bslib::value_box("Monto viable total (S/)",
+                       shiny::textOutput("kpi_viable", inline = TRUE),
+                       theme = "info"),
+      bslib::value_box("Av. ejecución medio",
+                       shiny::textOutput("kpi_avance", inline = TRUE),
+                       theme = "warning")
     ),
     bslib::layout_columns(
-      col_widths = c(7, 5),
-      card_widget("Promedios por tipología", DT::DTOutput("tbl_tipologia")),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+      card_widget("Promedios por tipología",
+                  DT::DTOutput("tbl_tipologia")),
       card_widget("Top 10 entidades por devengado 2012-2025",
                   DT::DTOutput("tbl_top_entidades"))
+    ),
+    bslib::layout_columns(
+      col_widths = 12,
+      card_widget("Tabla de inversiones (navegable)",
+                  DT::DTOutput("tbl_inversiones"))
     )
   ),
 
-  # ---- Pestaña: Mapa ------------------------------------------------------
+  # ---- Pestaña: Mapa -------------------------------------------------------
   bslib::nav_panel(
     "Mapa",
     bslib::layout_columns(
-      col_widths = c(12),
+      col_widths = 12,
       card_widget("Mapa global de inversiones GRD",
                   leaflet::leafletOutput("mapa", height = "560px"),
                   padding = 0)
     ),
     bslib::layout_columns(
-      col_widths = c(12),
+      col_widths = 12,
       card_widget("Top 15 departamentos por costo",
-                  plotly::plotlyOutput("g_deptos", height = "420px"))
+                  plotly::plotlyOutput("g_deptos", height = "380px"))
     )
   ),
 
-  # ---- Pestaña: Distribuciones -------------------------------------------
+  # ---- Pestaña: Distribuciones --------------------------------------------
   bslib::nav_panel(
     "Distribuciones",
     bslib::layout_columns(
-      col_widths = c(6, 6),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
       card_widget("Distribuciones de montos (log₁₀)",
-                  shiny::plotOutput("g_montos", height = "420px")),
+                  shiny::plotOutput("g_montos", height = "380px")),
       card_widget("Avance físico y de ejecución por estado",
-                  shiny::plotOutput("g_avances", height = "420px"))
+                  shiny::plotOutput("g_avances", height = "380px"))
     ),
     bslib::layout_columns(
-      col_widths = c(12),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
+      card_widget("Boxplots de costo por tipología (log₁₀)",
+                  shiny::plotOutput("g_boxplots_tipo", height = "380px")),
+      card_widget("Matriz de correlación (montos y avances)",
+                  shiny::plotOutput("g_corr_matrix",   height = "380px"))
+    ),
+    bslib::layout_columns(
+      col_widths = 12,
       card_widget("Outliers de costo (> Q3 + 3·IQR por tipología)",
                   DT::DTOutput("tbl_outliers"))
     )
   ),
 
-  # ---- Pestaña: Evolución temporal ---------------------------------------
+  # ---- Pestaña: Evolución temporal ----------------------------------------
   bslib::nav_panel(
     "Evolución temporal",
     bslib::layout_columns(
-      col_widths = c(7, 5),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
       card_widget("PIA, PIM y Devengado anual",
-                  plotly::plotlyOutput("g_serie", height = "420px")),
+                  plotly::plotlyOutput("g_serie",  height = "380px")),
       card_widget("Ratios de ejecución y ampliación",
-                  plotly::plotlyOutput("g_ratios", height = "420px"))
+                  plotly::plotlyOutput("g_ratios", height = "380px"))
     ),
     bslib::layout_columns(
-      col_widths = c(12),
+      col_widths = 12,
       card_widget("Top 10 tipologías por devengado 2012-2025",
                   DT::DTOutput("tbl_top_tipologias"))
     )
   ),
 
-  # ---- Pestaña: Inversión específica -------------------------------------
+  # ---- Pestaña: Departamentos ---------------------------------------------
+  bslib::nav_panel(
+    "Departamentos",
+    bslib::layout_columns(
+      col_widths = 12,
+      card_widget("Cortes por departamento",
+                  DT::DTOutput("tbl_deptos"))
+    )
+  ),
+
+  # ---- Pestaña: Inversión específica --------------------------------------
   bslib::nav_panel(
     "Inversión específica",
     bslib::card(
       bslib::card_header("Buscar inversión por código o nombre"),
       bslib::card_body(
-        shiny::selectizeInput(
-          "cod_foco", NULL,
-          choices = NULL, multiple = FALSE,
-          width = "100%",
-          options = list(placeholder = "Escribe código o palabras del nombre…",
-                         maxOptions = 50)
+        bslib::layout_columns(
+          col_widths = bslib::breakpoints(sm = 12, lg = c(10, 2)),
+          shiny::selectizeInput(
+            "cod_foco", NULL,
+            choices = NULL, multiple = FALSE,
+            width   = "100%",
+            options = list(placeholder = "Escribe código o palabras del nombre…",
+                           maxOptions  = 50)
+          ),
+          shiny::downloadButton("dl_pdf_reporte", "PDF",
+                                icon  = shiny::icon("file-pdf"),
+                                class = "btn-outline-danger btn-sm")
         )
       )
     ),
     bslib::layout_columns(
-      col_widths = c(7, 5),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
       card_widget("Ejecución acumulada — PIA/PIM/Devengado",
-                  plotly::plotlyOutput("g_foco_serie", height = "360px")),
+                  plotly::plotlyOutput("g_foco_serie", height = "340px")),
       card_widget("Ubicación",
-                  leaflet::leafletOutput("mapa_foco", height = "360px"),
+                  leaflet::leafletOutput("mapa_foco",  height = "340px"),
                   padding = 0)
     ),
     card_widget("Atributos del proyecto",
                 DT::DTOutput("tbl_foco"))
   ),
 
-  # ---- Pestaña: Diccionario ----------------------------------------------
+  # ---- Pestaña: Datos y descargas -----------------------------------------
+  bslib::nav_panel(
+    value = "tab_datos_descargas",
+    title = "Datos y descargas",
+    bslib::layout_columns(
+      col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
+      bslib::card(
+        bslib::card_header("Base geoespacial (filtrada)"),
+        bslib::card_body(
+          htmltools::p(
+            "Incluye todos los atributos de la inversión más columnas",
+            htmltools::code("lon"), "/", htmltools::code("lat"),
+            "extraídas de la geometría. Respeta los filtros activos."
+          ),
+          shiny::downloadButton("dl_csv_geo", "Descargar CSV geoespacial",
+                                icon  = shiny::icon("download"),
+                                class = "btn-primary btn-sm")
+        )
+      ),
+      bslib::card(
+        bslib::card_header("Base temporal (filtrada)"),
+        bslib::card_body(
+          htmltools::p(
+            "Serie 2012-2025 de PIA/PIM/Devengado por inversión.",
+            "Filtrada a los códigos activos según filtros globales."
+          ),
+          shiny::downloadButton("dl_csv_temporal", "Descargar CSV temporal",
+                                icon  = shiny::icon("download"),
+                                class = "btn-success btn-sm")
+        )
+      )
+    )
+  ),
+
+  # ---- Pestaña: Diccionario -----------------------------------------------
   bslib::nav_panel(
     "Diccionario",
-    card_widget(
-      "Diccionario de variables (df_pu_geoinv_inv_g_dpf)",
-      DT::DTOutput("tbl_diccionario")
+    bslib::layout_columns(
+      col_widths = 12,
+      card_widget(
+        "Diccionario actualizado (variables etiquetadas)",
+        DT::DTOutput("tbl_diccionario")
+      )
+    ),
+    bslib::layout_columns(
+      col_widths = 12,
+      card_widget(
+        "Diccionario oficial MEF (sin modificar)",
+        DT::DTOutput("tbl_diccionario_mef")
+      )
     )
   )
 )
@@ -186,29 +283,31 @@ ui <- bslib::page_navbar(
 
 server <- function(input, output, session) {
 
-  # ---- Reactivos centrales ----------------------------------------------
+  # ---- Reactivos centrales ------------------------------------------------
   datos_filt <- shiny::reactive({
     df <- df_pu_geoinv_inv_g_dpf
     if (length(input$f_tipologia))
-      df <- df |> dplyr::filter(des_tipologia %in% input$f_tipologia)
+      df <- dplyr::filter(df, des_tipologia %in% input$f_tipologia)
     if (length(input$f_depto))
-      df <- df |> dplyr::filter(stringr::str_sub(ubigeo, 1, 2) %in% input$f_depto)
+      df <- dplyr::filter(df,
+                          stringr::str_sub(ubigeo, 1, 2) %in% input$f_depto)
     if (length(input$f_estado))
-      df <- df |> dplyr::filter(estado %in% input$f_estado)
+      df <- dplyr::filter(df, estado %in% input$f_estado)
+    if (length(input$f_situacion))
+      df <- dplyr::filter(df, situacion %in% input$f_situacion)
+    if (!is.null(input$f_ioarr) && input$f_ioarr != "Todos")
+      df <- dplyr::filter(df,
+                          as.character(ind_ioarr_emerg) == input$f_ioarr)
     df
   })
 
-  datos_filt_plain <- shiny::reactive({
-    sf::st_drop_geometry(datos_filt())
-  })
+  datos_filt_plain <- shiny::reactive(sf::st_drop_geometry(datos_filt()))
+  codigos_filt     <- shiny::reactive(unique(datos_filt_plain()$codigo_unico))
+  serie_filt       <- shiny::reactive(
+    dplyr::filter(df_grd_2012_25_dpf, codigo_unico %in% codigos_filt())
+  )
 
-  codigos_filt <- shiny::reactive(unique(datos_filt_plain()$codigo_unico))
-
-  serie_filt <- shiny::reactive({
-    df_grd_2012_25_dpf |> dplyr::filter(codigo_unico %in% codigos_filt())
-  })
-
-  # ---- Sidebar: contador + reset ----------------------------------------
+  # ---- Sidebar: contador + reset ------------------------------------------
   output$n_filtrados <- shiny::renderText({
     n   <- nrow(datos_filt_plain())
     tot <- nrow(df_pu_geoinv_inv_g_dpf)
@@ -219,91 +318,88 @@ server <- function(input, output, session) {
     shiny::updateSelectizeInput(session, "f_tipologia", selected = character(0))
     shiny::updateSelectizeInput(session, "f_depto",     selected = character(0))
     shiny::updateSelectizeInput(session, "f_estado",    selected = character(0))
+    shiny::updateSelectizeInput(session, "f_situacion", selected = character(0))
+    shiny::updateSelectInput(   session, "f_ioarr",     selected = "Todos")
   })
 
-  # ---- Pestaña Resumen: KPIs --------------------------------------------
-  fmt_soles <- function(x) {
-    if (is.na(x) || !is.finite(x)) return("—")
-    scales::label_comma(prefix = "S/ ")(x)
-  }
-
+  # ---- KPIs ---------------------------------------------------------------
   output$kpi_n      <- shiny::renderText(scales::comma(nrow(datos_filt_plain())))
-  output$kpi_costo  <- shiny::renderText(fmt_soles(sum(datos_filt_plain()$costo_actualizado, na.rm = TRUE)))
-  output$kpi_viable <- shiny::renderText(fmt_soles(sum(datos_filt_plain()$monto_viable,      na.rm = TRUE)))
+  output$kpi_costo  <- shiny::renderText(
+    fmt_soles(sum(datos_filt_plain()$costo_actualizado, na.rm = TRUE)))
+  output$kpi_viable <- shiny::renderText(
+    fmt_soles(sum(datos_filt_plain()$monto_viable, na.rm = TRUE)))
   output$kpi_avance <- shiny::renderText({
     v <- mean(datos_filt_plain()$avance_ejecucion, na.rm = TRUE)
     if (is.nan(v)) "—" else paste0(round(v, 1), "%")
   })
 
-  # ---- Tabla: promedios por tipología -----------------------------------
+  # ---- Tabla: promedios por tipología ------------------------------------
   output$tbl_tipologia <- DT::renderDT({
     df <- datos_filt_plain()
-    shiny::validate(shiny::need(nrow(df) > 0, "Sin datos con los filtros actuales."))
-    tabla <- df |>
-      dplyr::filter(!is.na(des_tipologia)) |>
-      dplyr::group_by(des_tipologia) |>
-      dplyr::summarise(
-        n_proyectos            = dplyr::n(),
-        costo_actualizado_prom = mean(costo_actualizado, na.rm = TRUE),
-        monto_viable_prom      = mean(monto_viable,      na.rm = TRUE),
-        .groups = "drop"
-      ) |>
-      dplyr::arrange(dplyr::desc(costo_actualizado_prom)) |>
-      dplyr::rename_with(label_var)
-
-    DT::datatable(
-      tabla, rownames = FALSE,
-      options  = list(pageLength = 10, scrollX = TRUE)
-    ) |>
+    shiny::validate(shiny::need(nrow(df) > 0, "Sin datos."))
+    tabla <- tabla_promedios_tipologia(df) |> dplyr::rename_with(label_var)
+    DT::datatable(tabla, rownames = FALSE,
+                  options = list(pageLength = 10, scrollX = TRUE)) |>
       DT::formatRound(label_var(c("costo_actualizado_prom", "monto_viable_prom")),
                       digits = 0, mark = ",")
   })
 
-  # ---- Tabla: top 10 entidades por devengado ----------------------------
+  # ---- Tabla: top 10 entidades por devengado -----------------------------
   output$tbl_top_entidades <- DT::renderDT({
     s <- serie_filt()
-    shiny::validate(shiny::need(nrow(s) > 0, "Sin datos con los filtros actuales."))
+    shiny::validate(shiny::need(nrow(s) > 0, "Sin datos."))
     top <- data.table::as.data.table(s)[
       , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = entidad
-    ][order(-devengado_acum)][1:10]
-
-    DT::datatable(
-      dplyr::rename_with(top, label_var),
-      rownames = FALSE,
-      options  = list(pageLength = 10, dom = "t")
-    ) |>
+    ][order(-devengado_acum)][seq_len(min(10, .N))]
+    DT::datatable(dplyr::rename_with(top, label_var),
+                  rownames = FALSE,
+                  options  = list(pageLength = 10, dom = "t")) |>
       DT::formatRound(label_var("devengado_acum"), digits = 0, mark = ",")
   })
 
-  # ---- Tabla: top 10 tipologías -----------------------------------------
-  output$tbl_top_tipologias <- DT::renderDT({
-    s <- serie_filt()
-    shiny::validate(shiny::need(nrow(s) > 0, "Sin datos con los filtros actuales."))
-    top <- data.table::as.data.table(s)[
-      , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = des_tipologia
-    ][order(-devengado_acum)][1:10]
-
-    DT::datatable(
-      dplyr::rename_with(top, label_var),
-      rownames = FALSE,
-      options  = list(pageLength = 10, dom = "t")
-    ) |>
-      DT::formatRound(label_var("devengado_acum"), digits = 0, mark = ",")
+  # ---- Tabla navegable de inversiones ------------------------------------
+  output$tbl_inversiones <- DT::renderDT({
+    df <- datos_filt_plain()
+    shiny::validate(shiny::need(nrow(df) > 0, "Sin datos."))
+    df |>
+      dplyr::select(codigo_unico, nombre_abreviado, des_tipologia,
+                    entidad, estado, costo_actualizado, avance_ejecucion) |>
+      dplyr::rename_with(label_var) |>
+      DT::datatable(
+        rownames = FALSE, filter = "top",
+        options  = list(pageLength = 15, scrollX = TRUE,
+                        columnDefs = list(
+                          list(width = "300px",
+                               targets = which(
+                                 names(dplyr::rename_with(
+                                   dplyr::select(df, codigo_unico, nombre_abreviado,
+                                                 des_tipologia, entidad, estado,
+                                                 costo_actualizado, avance_ejecucion),
+                                   label_var
+                                 )) == label_var("nombre_abreviado")
+                               ) - 1
+                          )
+                        ))
+      ) |>
+      DT::formatRound(label_var("costo_actualizado"), digits = 0, mark = ",") |>
+      DT::formatRound(label_var("avance_ejecucion"),  digits = 1)
   })
 
-  # ---- Mapa global: render base + leyenda; marcadores con leafletProxy --
+  # ---- Mapa global --------------------------------------------------------
   output$mapa <- leaflet::renderLeaflet({
-    leaflet::leaflet() |>
-      leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
-      leaflet::setView(lng = -75, lat = -9.5, zoom = 5) |>
-      leaflet::addLegend(
-        position  = "bottomright",
-        pal       = pal_tipologia,
-        values    = tipologias_por_freq,
-        title     = "Tipología",
-        opacity   = 0.8,
-        className = "info legend leyenda-tipologia"
-      )
+    shiny::withProgress(message = "Cargando mapa…", value = 0.5, {
+      leaflet::leaflet() |>
+        leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
+        leaflet::setView(lng = -75, lat = -9.5, zoom = 5) |>
+        leaflet::addLegend(
+          position  = "bottomright",
+          pal       = pal_tipologia,
+          values    = tipologias_por_freq,
+          title     = "Tipología",
+          opacity   = 0.8,
+          className = "info legend leyenda-tipologia"
+        )
+    })
   })
 
   shiny::observe({
@@ -311,11 +407,8 @@ server <- function(input, output, session) {
     p  <- leaflet::leafletProxy("mapa") |> leaflet::clearMarkers()
     if (nrow(df) == 0) return(invisible())
 
-    plain <- sf::st_drop_geometry(df)
-    log_costo <- log10(pmax(plain$costo_actualizado, 1, na.rm = TRUE))
-    rng <- range(log_costo, na.rm = TRUE)
-    radios <- if (diff(rng) == 0) rep(5, length(log_costo)) else
-      3 + (log_costo - rng[1]) / (rng[2] - rng[1] + 1e-9) * (9 - 3)
+    plain  <- sf::st_drop_geometry(df)
+    radios <- radios_log(plain$costo_actualizado)
 
     p |> leaflet::addCircleMarkers(
       data        = df,
@@ -326,7 +419,7 @@ server <- function(input, output, session) {
       weight      = 0.4,
       opacity     = 0.6,
       popup       = ~glue::glue(
-        "<b>{nombre_inversion}</b><br>",
+        "<b>{nombre_abreviado}</b><br>",
         "<i>{des_tipologia}</i><br>",
         "Entidad: {entidad}<br>",
         "Estado: {estado}<br>",
@@ -343,21 +436,24 @@ server <- function(input, output, session) {
     )
   })
 
-  # ---- Barplot: top 15 departamentos ------------------------------------
+  # ---- Barplot: top 15 departamentos -------------------------------------
   output$g_deptos <- plotly::renderPlotly({
     plain <- datos_filt_plain()
-    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos con los filtros actuales."))
-
-    if (length(input$f_depto) == 1L) {
-      shiny::validate("Filtrado a 1 departamento — la vista de comparación no aplica.")
-    }
+    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos."))
+    if (length(input$f_depto) == 1L)
+      shiny::validate("Filtrado a 1 departamento — la vista comparativa no aplica.")
 
     tabla <- plain |>
-      dplyr::mutate(cod_depto = stringr::str_sub(ubigeo, 1, 2),
-                    cod_depto = dplyr::if_else(
-                      !is.na(cod_depto) & nchar(cod_depto) == 2, cod_depto, "98")) |>
+      dplyr::mutate(
+        cod_depto = stringr::str_sub(ubigeo, 1, 2),
+        cod_depto = dplyr::if_else(
+          !is.na(cod_depto) & nchar(cod_depto) == 2, cod_depto, "98"
+        )
+      ) |>
       dplyr::left_join(depto_lookup, by = "cod_depto") |>
-      dplyr::mutate(departamento = dplyr::coalesce(departamento, glue::glue("Cod {cod_depto}"))) |>
+      dplyr::mutate(departamento = dplyr::coalesce(
+        departamento, glue::glue("Cod {cod_depto}")
+      )) |>
       dplyr::group_by(departamento) |>
       dplyr::summarise(costo_total = sum(costo_actualizado, na.rm = TRUE),
                        .groups = "drop") |>
@@ -370,10 +466,10 @@ server <- function(input, output, session) {
       ggplot2::aes(x = costo_total, y = departamento,
                    text = scales::label_comma()(costo_total))
     ) +
-      ggplot2::geom_col(fill = "#2166AC") +
+      ggplot2::geom_col(fill = paleta_grd["azul_osc"]) +
       ggplot2::scale_x_continuous(labels = scales::label_comma()) +
       ggplot2::labs(x = "Costo actualizado total (S/)", y = NULL) +
-      ggplot2::theme_minimal()
+      theme_grd()
 
     plotly::ggplotly(g, tooltip = c("y", "text"))
   })
@@ -381,7 +477,7 @@ server <- function(input, output, session) {
   # ---- Distribuciones de montos -----------------------------------------
   output$g_montos <- shiny::renderPlot({
     plain <- datos_filt_plain()
-    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos con los filtros actuales."))
+    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos."))
 
     df_largo <- plain |>
       dplyr::select(monto_viable, costo_actualizado,
@@ -398,23 +494,23 @@ server <- function(input, output, session) {
       ))
 
     shiny::validate(shiny::need(nrow(df_largo) > 0,
-                                "Sin valores > 0 para graficar en log₁₀."))
+                                "Sin valores > 0 para log₁₀."))
 
     ggplot2::ggplot(df_largo, ggplot2::aes(x = valor)) +
-      ggplot2::geom_histogram(bins = 40, fill = "#4393C3",
+      ggplot2::geom_histogram(bins = 40, fill = paleta_grd["azul"],
                               color = "white", alpha = 0.8) +
       ggplot2::geom_density(ggplot2::aes(y = ggplot2::after_stat(count)),
-                            color = "#D6604D", linewidth = 0.8) +
+                            color = paleta_grd["rojo"], linewidth = 0.8) +
       ggplot2::scale_x_log10(labels = scales::label_comma()) +
       ggplot2::facet_wrap(~variable, scales = "free_y", ncol = 2) +
       ggplot2::labs(x = "Soles (escala log₁₀)", y = "Frecuencia") +
-      ggplot2::theme_minimal()
+      theme_grd()
   })
 
   # ---- Avances por estado ------------------------------------------------
   output$g_avances <- shiny::renderPlot({
     plain <- datos_filt_plain()
-    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos con los filtros actuales."))
+    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos."))
 
     df_av <- plain |>
       dplyr::filter(!is.na(estado)) |>
@@ -435,15 +531,96 @@ server <- function(input, output, session) {
       ggplot2::facet_wrap(~tipo_avance, ncol = 2) +
       ggplot2::scale_y_continuous(limits = c(0, 100)) +
       ggplot2::labs(x = "Estado", y = "Avance (%)") +
-      ggplot2::theme_minimal() +
+      theme_grd() +
       ggplot2::theme(legend.position = "none",
                      axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
   })
 
-  # ---- Outliers de costo ------------------------------------------------
+  # ---- Boxplots por tipología (top 10) -----------------------------------
+  output$g_boxplots_tipo <- shiny::renderPlot({
+    plain <- datos_filt_plain()
+    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos."))
+
+    top_tipos <- plain |>
+      dplyr::count(des_tipologia, sort = TRUE) |>
+      dplyr::slice_head(n = 10) |>
+      dplyr::pull(des_tipologia)
+
+    df_box <- plain |>
+      dplyr::filter(des_tipologia %in% top_tipos,
+                    is.finite(costo_actualizado), costo_actualizado > 0) |>
+      dplyr::mutate(
+        des_tipologia = forcats::fct_reorder(des_tipologia, costo_actualizado,
+                                             .fun = median, na.rm = TRUE)
+      )
+
+    shiny::validate(shiny::need(nrow(df_box) > 0, "Sin datos de costo."))
+
+    ggplot2::ggplot(df_box,
+                    ggplot2::aes(x = costo_actualizado, y = des_tipologia)) +
+      ggplot2::geom_boxplot(fill = paleta_grd["azul"], alpha = 0.6,
+                            outlier.size = 0.6, outlier.alpha = 0.3) +
+      ggplot2::scale_x_log10(labels = scales::label_comma()) +
+      ggplot2::labs(x = "Costo actualizado (log₁₀, S/)", y = NULL,
+                    subtitle = "Top 10 tipologías por frecuencia") +
+      theme_grd()
+  })
+
+  # ---- Matriz de correlación-dispersión (GGally) -------------------------
+  output$g_corr_matrix <- shiny::renderPlot({
+    shiny::withProgress(message = "Calculando matriz de correlación…", {
+      plain <- datos_filt_plain()
+      shiny::validate(shiny::need(nrow(plain) >= 10, "Necesitas al menos 10 inversiones."))
+
+      df_mat <- plain |>
+        dplyr::select(costo_actualizado, monto_viable,
+                      pia_anio_actual, pim_anio_actual,
+                      avance_fisico, avance_ejecucion) |>
+        dplyr::filter(dplyr::if_all(
+          c(costo_actualizado, monto_viable),
+          ~ is.finite(.) & . > 0
+        )) |>
+        dplyr::mutate(
+          log_costo    = log10(costo_actualizado),
+          log_viable   = log10(monto_viable),
+          log_pia      = log10(pmax(pia_anio_actual, 1, na.rm = TRUE)),
+          log_pim      = log10(pmax(pim_anio_actual, 1, na.rm = TRUE)),
+          av_fisico    = avance_fisico,
+          av_ejecucion = avance_ejecucion
+        ) |>
+        dplyr::select(log_costo, log_viable, log_pia, log_pim,
+                      av_fisico, av_ejecucion)
+
+      col_labels <- c(
+        log_costo    = "log₁₀\nCosto",
+        log_viable   = "log₁₀\nViable",
+        log_pia      = "log₁₀\nPIA",
+        log_pim      = "log₁₀\nPIM",
+        av_fisico    = "Av.\nFísico",
+        av_ejecucion = "Av.\nEjec."
+      )
+
+      shiny::validate(shiny::need(nrow(df_mat) >= 5, "Datos insuficientes."))
+
+      GGally::ggpairs(
+        df_mat,
+        columnLabels = col_labels,
+        upper = list(continuous = GGally::wrap("cor", size = 2.5)),
+        lower = list(continuous = GGally::wrap("points",
+                                               alpha = 0.2, size = 0.5,
+                                               color = paleta_grd["azul"])),
+        diag  = list(continuous = GGally::wrap("densityDiag",
+                                               fill = paleta_grd["azul"],
+                                               alpha = 0.5))
+      ) +
+        theme_grd(base_size = 8)
+    })
+  })
+
+  # ---- Outliers de costo -------------------------------------------------
   output$tbl_outliers <- DT::renderDT({
     plain <- datos_filt_plain()
-    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos con los filtros actuales."))
+    shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos."))
 
     df_out <- plain |>
       dplyr::left_join(limites_iqr, by = "des_tipologia") |>
@@ -454,37 +631,32 @@ server <- function(input, output, session) {
         (costo_actualizado - monto_viable) / monto_viable * 100,
         NA_real_
       )) |>
-      dplyr::select(codigo_unico, nombre_inversion, entidad,
+      dplyr::select(codigo_unico, nombre_abreviado, entidad,
                     des_tipologia, costo_actualizado, pct_costo_vs_viable) |>
       dplyr::arrange(dplyr::desc(costo_actualizado))
 
     shiny::validate(shiny::need(nrow(df_out) > 0,
-                                "Ningún proyecto supera Q3 + 3·IQR en su tipología."))
+                                "Ningún proyecto supera Q3 + 3·IQR."))
 
     DT::datatable(
       dplyr::rename_with(df_out, label_var),
       rownames = FALSE, filter = "top",
       options  = list(pageLength = 10, scrollX = TRUE)
     ) |>
-      DT::formatRound(label_var("costo_actualizado"), digits = 0, mark = ",") |>
+      DT::formatRound(label_var("costo_actualizado"),   digits = 0, mark = ",") |>
       DT::formatRound(label_var("pct_costo_vs_viable"), digits = 1)
   })
 
-  # ---- Evolución temporal -----------------------------------------------
+  # ---- Evolución temporal ------------------------------------------------
   serie_portafolio_filt <- shiny::reactive({
     s <- serie_filt()
     shiny::req(nrow(s) > 0)
-    data.table::as.data.table(s)[
-      , .(pia       = sum(pia,       na.rm = TRUE),
-          pim       = sum(pim,       na.rm = TRUE),
-          devengado = sum(devengado, na.rm = TRUE)),
-      by = anio
-    ][order(anio)]
+    serie_portafolio(s)
   })
 
   output$g_serie <- plotly::renderPlotly({
     sp <- serie_portafolio_filt()
-    shiny::validate(shiny::need(nrow(sp) > 0, "Sin datos para graficar."))
+    shiny::validate(shiny::need(nrow(sp) > 0, "Sin datos."))
 
     s_largo <- sp |>
       tidyr::pivot_longer(c(pia, pim, devengado),
@@ -501,25 +673,21 @@ server <- function(input, output, session) {
       ggplot2::geom_line(linewidth = 1) +
       ggplot2::geom_point(size = 2) +
       ggplot2::scale_color_manual(
-        values = c(PIA = "#1A9850", PIM = "#4393C3", Devengado = "#D6604D")
+        values = c(PIA = paleta_grd["verde"], PIM = paleta_grd["azul"],
+                   Devengado = paleta_grd["rojo"])
       ) +
       ggplot2::scale_y_continuous(labels = scales::label_comma()) +
       ggplot2::labs(x = "Año", y = "Soles", color = NULL) +
-      ggplot2::theme_minimal()
+      theme_grd()
 
     plotly::ggplotly(g, tooltip = c("x", "text"))
   })
 
   output$g_ratios <- plotly::renderPlotly({
     sp <- serie_portafolio_filt()
-    shiny::validate(shiny::need(nrow(sp) > 0, "Sin datos para graficar."))
+    shiny::validate(shiny::need(nrow(sp) > 0, "Sin datos."))
 
-    s_ratios <- sp |>
-      dplyr::mutate(
-        pct_ejecucion = dplyr::if_else(pim > 0, devengado / pim * 100, NA_real_),
-        pct_pim_pia   = dplyr::if_else(pia > 0, pim       / pia * 100, NA_real_)
-      ) |>
-      dplyr::select(anio, pct_ejecucion, pct_pim_pia) |>
+    s_ratios <- ratios_portafolio(sp) |>
       tidyr::pivot_longer(c(pct_ejecucion, pct_pim_pia),
                           names_to = "ratio", values_to = "valor") |>
       dplyr::mutate(ratio = dplyr::recode(
@@ -536,28 +704,54 @@ server <- function(input, output, session) {
       ggplot2::geom_line(linewidth = 1) +
       ggplot2::geom_point(size = 2) +
       ggplot2::scale_color_manual(
-        values = c("% Ejecución (Dev./PIM)" = "#D6604D",
-                   "% PIM vs. PIA"           = "#4393C3")
+        values = c("% Ejecución (Dev./PIM)" = paleta_grd["rojo"],
+                   "% PIM vs. PIA"           = paleta_grd["azul"])
       ) +
       ggplot2::scale_y_continuous(labels = ~paste0(., "%")) +
       ggplot2::labs(x = "Año", y = "Porcentaje (%)", color = NULL) +
-      ggplot2::theme_minimal()
+      theme_grd()
 
     plotly::ggplotly(g, tooltip = c("x", "text"))
+  })
+
+  # ---- Tabla: top 10 tipologías -----------------------------------------
+  output$tbl_top_tipologias <- DT::renderDT({
+    s <- serie_filt()
+    shiny::validate(shiny::need(nrow(s) > 0, "Sin datos."))
+    top <- data.table::as.data.table(s)[
+      , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = des_tipologia
+    ][order(-devengado_acum)][seq_len(min(10, .N))]
+    DT::datatable(dplyr::rename_with(top, label_var),
+                  rownames = FALSE,
+                  options  = list(pageLength = 10, dom = "t")) |>
+      DT::formatRound(label_var("devengado_acum"), digits = 0, mark = ",")
+  })
+
+  # ---- Tabla: cortes por departamento ------------------------------------
+  output$tbl_deptos <- DT::renderDT({
+    df <- datos_filt_plain()
+    shiny::validate(shiny::need(nrow(df) > 0, "Sin datos."))
+    tabla <- tabla_cortes_departamento(df, depto_lookup) |>
+      dplyr::rename_with(label_var)
+    DT::datatable(tabla, rownames = FALSE, filter = "top",
+                  options = list(pageLength = 15, scrollX = TRUE)) |>
+      DT::formatRound(label_var("costo_total"),        digits = 0, mark = ",") |>
+      DT::formatRound(label_var("pct_ejecucion_prom"), digits = 1)
   })
 
   # ---- Inversión específica: buscador server-side -----------------------
   shiny::updateSelectizeInput(
     session, "cod_foco",
-    choices  = stats::setNames(opciones_codigo_inv$value, opciones_codigo_inv$label),
+    choices  = stats::setNames(opciones_codigo_inv$value,
+                               opciones_codigo_inv$label),
     server   = TRUE,
     selected = "2508148"
   )
 
   fila_foco <- shiny::reactive({
     shiny::req(input$cod_foco)
-    df_pu_geoinv_inv_g_dpf |>
-      dplyr::filter(codigo_unico == as.character(input$cod_foco))
+    dplyr::filter(df_pu_geoinv_inv_g_dpf,
+                  codigo_unico == as.character(input$cod_foco))
   })
 
   output$tbl_foco <- DT::renderDT({
@@ -568,9 +762,11 @@ server <- function(input, output, session) {
       sf::st_drop_geometry() |>
       dplyr::mutate(dplyr::across(where(is.numeric),
                                   ~scales::comma(., accuracy = 1))) |>
-      tidyr::pivot_longer(dplyr::everything(),
-                          names_to = "variable", values_to = "valor",
-                          values_transform = list(valor = as.character)) |>
+      tidyr::pivot_longer(
+        dplyr::everything(),
+        names_to = "variable", values_to = "valor",
+        values_transform = list(valor = as.character)
+      ) |>
       dplyr::mutate(variable = label_var(variable))
 
     DT::datatable(
@@ -581,9 +777,9 @@ server <- function(input, output, session) {
   })
 
   output$g_foco_serie <- plotly::renderPlotly({
-    cod <- shiny::req(input$cod_foco)
-    serie <- df_grd_2012_25_dpf |>
-      dplyr::filter(codigo_unico == as.character(cod)) |>
+    cod   <- shiny::req(input$cod_foco)
+    serie <- dplyr::filter(df_grd_2012_25_dpf,
+                           codigo_unico == as.character(cod)) |>
       dplyr::group_by(anio) |>
       dplyr::summarise(pia       = sum(pia,       na.rm = TRUE),
                        pim       = sum(pim,       na.rm = TRUE),
@@ -591,7 +787,8 @@ server <- function(input, output, session) {
                        .groups   = "drop") |>
       dplyr::arrange(anio)
 
-    shiny::validate(shiny::need(nrow(serie) > 0, "Sin serie temporal para esta inversión."))
+    shiny::validate(shiny::need(nrow(serie) > 0,
+                                "Sin serie temporal para esta inversión."))
 
     s_largo <- serie |>
       dplyr::mutate(dplyr::across(c(pia, pim, devengado), cumsum)) |>
@@ -607,10 +804,11 @@ server <- function(input, output, session) {
       ggplot2::geom_point() +
       ggplot2::scale_y_continuous(labels = scales::label_comma()) +
       ggplot2::scale_color_manual(
-        values = c(PIA = "#1A9850", PIM = "#4393C3", Devengado = "#D6604D")
+        values = c(PIA = paleta_grd["verde"], PIM = paleta_grd["azul"],
+                   Devengado = paleta_grd["rojo"])
       ) +
       ggplot2::labs(x = "Año", y = "Soles acumulados", color = NULL) +
-      ggplot2::theme_minimal()
+      theme_grd()
 
     plotly::ggplotly(g)
   })
@@ -622,22 +820,89 @@ server <- function(input, output, session) {
     leaflet::leaflet(f) |>
       leaflet::addTiles() |>
       leaflet::addCircleMarkers(
-        radius = 8, color = "red", fillOpacity = 0.8,
+        radius = 8, color = "#D6604D", fillOpacity = 0.8,
         popup  = ~glue::glue(
-          "<b>{nombre_inversion}</b><br>",
+          "<b>{nombre_abreviado}</b><br>",
           "Tipología: {des_tipologia}<br>",
-          "Monto viable: {scales::label_comma()(monto_viable)}<br>",
-          "Costo actualizado: {scales::label_comma()(costo_actualizado)}"
+          "Monto viable: S/ {scales::label_comma()(monto_viable)}<br>",
+          "Costo actualizado: S/ {scales::label_comma()(costo_actualizado)}"
         )
       )
   })
 
-  # ---- Diccionario ------------------------------------------------------
+  # ---- Descarga PDF del reporte ------------------------------------------
+  output$dl_pdf_reporte <- shiny::downloadHandler(
+    filename = function() {
+      glue::glue("reporte_inversion_{input$cod_foco}.pdf")
+    },
+    content  = function(file) {
+      shiny::withProgress(
+        message = "Generando PDF…",
+        detail  = "Preparando datos…",
+        value   = 0.2,
+        {
+          f <- fila_foco()
+          shiny::validate(shiny::need(nrow(f) > 0, "Sin datos de inversión."))
+
+          serie_inv <- dplyr::filter(df_grd_2012_25_dpf,
+                                     codigo_unico == as.character(input$cod_foco))
+
+          shiny::incProgress(0.4, detail = "Renderizando Quarto/Typst…")
+
+          pdf_path <- renderizar_reporte_pdf(
+            codigo      = input$cod_foco,
+            datos_inv   = f,
+            datos_serie = serie_inv
+          )
+
+          shiny::incProgress(0.4, detail = "Listo.")
+          file.copy(pdf_path, file)
+        }
+      )
+    }
+  )
+
+  # ---- Descargas CSV ------------------------------------------------------
+  output$dl_csv_geo <- shiny::downloadHandler(
+    filename = function() {
+      glue::glue("inversiones_grd_geo_{format(Sys.Date(), '%Y%m%d')}.csv")
+    },
+    content = function(file) {
+      shiny::withProgress(message = "Exportando CSV geoespacial…", value = 0.5, {
+        exportar_csv_geo(datos_filt(), file)
+      })
+    }
+  )
+
+  output$dl_csv_temporal <- shiny::downloadHandler(
+    filename = function() {
+      glue::glue("inversiones_grd_temporal_{format(Sys.Date(), '%Y%m%d')}.csv")
+    },
+    content = function(file) {
+      shiny::withProgress(message = "Exportando CSV temporal…", value = 0.5, {
+        exportar_csv_temporal(serie_filt(), file)
+      })
+    }
+  )
+
+  # ---- Diccionario -------------------------------------------------------
   output$tbl_diccionario <- DT::renderDT({
     DT::datatable(
       diccionario_final, rownames = FALSE,
-      options  = list(pageLength = 15, scrollX = TRUE),
-      colnames = c("Variable", "Nombre común", "Definición")
+      colnames = c("Variable", "Nombre común", "Definición"),
+      options  = list(pageLength = 15, scrollX = TRUE)
+    )
+  })
+
+  output$tbl_diccionario_mef <- DT::renderDT({
+    shiny::validate(shiny::need(
+      !is.null(dicc_oficial),
+      "Diccionario oficial MEF no disponible (diccionario.rds no encontrado)."
+    ))
+    DT::datatable(
+      diccionario_mef, rownames = FALSE,
+      colnames = c("Variable", "Definición MEF"),
+      options  = list(pageLength = 15, scrollX = TRUE)
     )
   })
 }

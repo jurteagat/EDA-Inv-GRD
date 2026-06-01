@@ -6,3 +6,7 @@ folder_xyz_ignore/
 *.csv
 *.gpkg
 *.rds
+!midputs/rds/_cache_app.rds
+._*
+*.html
+.quarto/
