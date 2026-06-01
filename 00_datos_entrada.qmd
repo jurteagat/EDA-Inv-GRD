@@ -21,13 +21,14 @@ params:
   gdrive_id_diccionario: "13J6fKucKgNJ8Kngtq4gGGsnvMenC1A8i"
   gdrive_id_geoinv:      "1V1jRSqqgjeX7jJkhSag0b1ufB5PP9X2Z"
   gdrive_id_grd_12_25:   "1ZQHQOMFD8MG0r5pgDgcniUbZR_XGDGVq"
+  gdrive_id_fechas:      "18jPh1hreHOM2_4VonCOlzt5IiU15STOx"
 ---
 
 # Arreglo YAML
 
 ```{r}
 #| label: setup
-#| include: false
+#| include: true
 
 # Extraemos los parámetros directamente del YAML de este mismo archivo
 # dado que positron tiene problemas al ejecutar los chuncks.
@@ -289,6 +290,12 @@ descargar_rds_drive(params$gdrive_id_diccionario, "diccionario.rds")
 descargar_rds_drive(params$gdrive_id_geoinv,      "geoinv.rds")
 descargar_rds_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.rds")
 
+if (nzchar(params$gdrive_id_fechas)) {
+  descargar_rds_drive(params$gdrive_id_fechas, "fechas_fuentes.csv")
+} else {
+  message("gdrive_id_fechas vacío: omito descarga del CSV de fechas.")
+}
+
 message("Descarga completada. El cuaderno EDA ya puede leer desde midputs/rds/.")
 ```
 
@@ -358,6 +365,36 @@ data.frame(
 )
 ```
 
+```{r s2-registrar-fechas, eval = params$leer_desde_local}
+# Construye un CSV con la fecha de los datos de cada fuente oficial.
+# fecha_dato: extraída del nombre del archivo (YYYYMMDD) o del mtime.
+# fecha_registro: fecha en que se corre este cuaderno.
+fecha_iso <- function(ruta) {
+  if (is.null(ruta) || !file.exists(ruta)) return(NA_character_)
+  fecha_str <- stringr::str_extract(basename(ruta), "\\d{8}")
+  if (!is.na(fecha_str)) {
+    format(as.Date(fecha_str, "%Y%m%d"), "%Y-%m-%d")
+  } else {
+    format(as.Date(file.info(ruta)$mtime), "%Y-%m-%d")
+  }
+}
+
+fechas_fuentes <- data.table::data.table(
+  fuente          = c("MEF — Detalle Inversiones", "MEF — Diccionario",
+                      "MEF — GeoInversiones (ESRI)", "MEF — Ejecución 2012-2025"),
+  archivo         = c(basename(ruta_det_inv), basename(ruta_diccionario),
+                      basename(ruta_gpkg),    basename(ruta_grd_12_25)),
+  fecha_dato      = c(fecha_iso(ruta_det_inv), fecha_iso(ruta_diccionario),
+                      fecha_iso(ruta_gpkg),    fecha_iso(ruta_grd_12_25)),
+  fecha_registro  = format(Sys.Date(), "%Y-%m-%d")
+)
+
+ruta_fechas_csv <- here::here("midputs", "rds", "fechas_fuentes.csv")
+data.table::fwrite(fechas_fuentes, ruta_fechas_csv)
+message(glue::glue("CSV de fechas guardado en: {ruta_fechas_csv}"))
+print(fechas_fuentes)
+```
+
 ---
 
 # Sección 3 — Subida a Google Drive
@@ -396,6 +433,12 @@ subir_rds_drive(params$gdrive_id_det_inv,     "det_inv.rds")
 subir_rds_drive(params$gdrive_id_diccionario, "diccionario.rds")
 subir_rds_drive(params$gdrive_id_geoinv,      "geoinv.rds")
 subir_rds_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.rds")
+
+if (nzchar(params$gdrive_id_fechas)) {
+  subir_rds_drive(params$gdrive_id_fechas, "fechas_fuentes.csv")
+} else {
+  message("gdrive_id_fechas vacío: omito subida del CSV de fechas (pega el ID en el YAML).")
+}
 
 message("Subida completada. Verifica en Drive que los tamaños sean los esperados.")
 ```
