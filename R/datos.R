@@ -6,7 +6,8 @@ DRIVE_IDS <- list(
   diccionario       = "13J6fKucKgNJ8Kngtq4gGGsnvMenC1A8i",
   geoinv            = "1V1jRSqqgjeX7jJkhSag0b1ufB5PP9X2Z",
   grd_12_25         = "1ZQHQOMFD8MG0r5pgDgcniUbZR_XGDGVq",
-  nombres_abreviados = "1_ielTIIhPjN-6jd9SF7w-LZrmSJRos04"
+  nombres_abreviados = "1_ielTIIhPjN-6jd9SF7w-LZrmSJRos04",
+  deptos_shp        = "1T0vOdYJLdigP1C4aykrEgJAINxit1PTA"
 )
 
 #' Descarga un archivo de Google Drive solo si no existe localmente.
@@ -69,6 +70,65 @@ guardar_cache_app <- function(objetos, ruta_cache = ruta_cache_app()) {
 #' Carga la caché y devuelve la lista nombrada de objetos.
 cargar_cache_app <- function(ruta_cache = ruta_cache_app()) {
   readRDS(ruta_cache)
+}
+
+#' Descarga el shapefile departamental, simplifica y guarda como RDS.
+#' El campo de código departamental se detecta automáticamente buscando
+#' nombres comunes: CCDD, IDDPTO, COD_DPTO, UBIGEO (2 primeros dígitos).
+preparar_deptos_geo <- function(ruta_descarga, ruta_rds) {
+  googledrive::drive_deauth()
+  googledrive::drive_download(
+    googledrive::as_id(DRIVE_IDS$deptos_shp),
+    path      = ruta_descarga,
+    overwrite = TRUE
+  )
+
+  if (endsWith(tolower(ruta_descarga), ".zip")) {
+    dir_out <- file.path(dirname(ruta_descarga), "deptos_shp_raw")
+    utils::unzip(ruta_descarga, exdir = dir_out)
+    shp_file <- list.files(dir_out, pattern = "\\.shp$",
+                           full.names = TRUE, recursive = TRUE)[1]
+    sf_raw <- sf::st_read(shp_file, quiet = TRUE)
+  } else {
+    sf_raw <- sf::st_read(ruta_descarga, quiet = TRUE)
+  }
+
+  sf_wgs84 <- sf::st_transform(sf_raw, crs = 4326)
+
+  campos <- toupper(names(sf_wgs84))
+  campo_cod <- NULL
+  for (candidato in c("CCDD", "IDDPTO", "COD_DPTO", "DEPARTAMEN")) {
+    idx <- match(candidato, campos)
+    if (!is.na(idx)) { campo_cod <- names(sf_wgs84)[idx]; break }
+  }
+
+  sf_simp <- rmapshaper::ms_simplify(sf_wgs84, keep = 0.02, keep_shapes = TRUE)
+
+  if (!is.null(campo_cod)) {
+    sf_simp$cod_depto <- stringr::str_pad(
+      as.character(sf_simp[[campo_cod]]), width = 2, side = "left", pad = "0"
+    )
+  } else {
+    # Fallback: si hay UBIGEO tomar primeros 2 dígitos
+    idx_ub <- match("UBIGEO", campos)
+    if (!is.na(idx_ub)) {
+      sf_simp$cod_depto <- stringr::str_sub(
+        stringr::str_pad(as.character(sf_simp[[names(sf_wgs84)[idx_ub]]]),
+                         width = 6, pad = "0"),
+        1, 2
+      )
+    } else {
+      stop("No se encontró campo de código departamental en el shapefile: ",
+           paste(names(sf_raw), collapse = ", "))
+    }
+  }
+
+  sf_final <- sf_simp |>
+    dplyr::select(cod_depto, geometry) |>
+    dplyr::filter(!is.na(cod_depto))
+
+  saveRDS(sf_final, file = ruta_rds)
+  invisible(sf_final)
 }
 
 #' Construye el universo de códigos GRD comunes a las tres fuentes.

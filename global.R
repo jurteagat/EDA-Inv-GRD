@@ -21,13 +21,14 @@ suppressPackageStartupMessages({
   library(data.table)
   library(sf)
   library(ggplot2)
-  library(GGally)
   library(plotly)
   library(leaflet)
   library(leaflet.extras)
   library(htmltools)
   library(DT)
   library(bslib)
+  library(bsicons)
+  library(rmapshaper)
   library(shiny)
   library(readr)
   library(googledrive)
@@ -49,6 +50,8 @@ ruta_rds <- function(f) here::here("midputs", "rds", f)
   ruta_rds("geoinv.rds"),
   ruta_rds("grd_2012_25.rds"),
   ruta_rds("nombres_abreviados.csv"),
+  ruta_rds("deptos_geo.rds"),
+  here::here("midputs", "rds", "fechas_fuentes.csv"),
   list.files(here::here("R"), pattern = "\\.R$", full.names = TRUE),
   here::here("global.R")
 )
@@ -73,6 +76,16 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   descargar_si_falta(DRIVE_IDS$geoinv,              ruta_rds("geoinv.rds"))
   descargar_si_falta(DRIVE_IDS$grd_12_25,           ruta_rds("grd_2012_25.rds"))
   descargar_si_falta(DRIVE_IDS$nombres_abreviados,  ruta_rds("nombres_abreviados.csv"))
+
+  # Shapefile departamental: generar si no existe
+  if (!file.exists(ruta_rds("deptos_geo.rds"))) {
+    message("Generando deptos_geo.rds desde Drive…")
+    preparar_deptos_geo(
+      ruta_descarga = here::here("raw", "deptos_shp.zip"),
+      ruta_rds      = ruta_rds("deptos_geo.rds")
+    )
+  }
+  deptos_geo <- readRDS(ruta_rds("deptos_geo.rds"))
 
   # Lectura de RDS
   cols_det_inv <- c(
@@ -146,6 +159,16 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
 
   stopifnot(nrow(df_pu_geoinv_inv_g_dpf) == length(codigos_grd_comunes))
   stopifnot(inherits(df_pu_geoinv_inv_g_dpf, "sf"))
+
+  # Recodificar tipología vacía → "Indeterminada" (obs 1)
+  df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
+    dplyr::mutate(
+      des_tipologia = dplyr::if_else(
+        is.na(des_tipologia) | trimws(des_tipologia) == "",
+        "Indeterminada",
+        des_tipologia
+      )
+    )
 
   df_grd_2012_25_dp <- df_grd_2012_25[codigo_unico %in% codigos_grd_comunes]
   rm(df_grd_2012_25); invisible(gc())
@@ -271,7 +294,6 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     dplyr::transmute(value = cod_depto,
                      label = glue::glue("{cod_depto} — {departamento}"))
 
-  opciones_estado    <- sort(unique(stats::na.omit(df_geo_plain$estado)))
   opciones_situacion <- sort(unique(stats::na.omit(df_geo_plain$situacion)))
   opciones_ioarr     <- c("Todos", sort(unique(stats::na.omit(
     as.character(df_geo_plain$ind_ioarr_emerg)
@@ -283,6 +305,12 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
       label = glue::glue("{codigo_unico} — {nombre_abreviado}")
     ) |>
     dplyr::arrange(label)
+
+  # Fecha de los datos (generada por 00_datos_entrada.qmd)
+  ruta_fechas <- here::here("midputs", "rds", "fechas_fuentes.csv")
+  fechas_fuentes <- if (file.exists(ruta_fechas)) {
+    data.table::fread(ruta_fechas)
+  } else { NULL }
 
   # Serie portafolio total (sin filtro)
   serie_portafolio_total <- serie_portafolio(df_grd_2012_25_dpf)
@@ -312,16 +340,15 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     df_grd_2012_25_dpf      = df_grd_2012_25_dpf,
     df_geo_plain            = df_geo_plain,
     depto_lookup            = depto_lookup,
+    deptos_geo              = deptos_geo,
     tipologias_por_freq     = tipologias_por_freq,
     paleta_ordenada         = paleta_ordenada,
     pal_tipologia           = pal_tipologia,
     limites_iqr             = limites_iqr,
-    dicc_oficial            = dicc_oficial,
-    diccionario_mef         = diccionario_mef,
     diccionario_final       = diccionario_final,
     opciones_tipologia      = opciones_tipologia,
     opciones_depto          = opciones_depto,
-    opciones_estado         = opciones_estado,
+    fechas_fuentes          = fechas_fuentes,
     opciones_situacion      = opciones_situacion,
     opciones_ioarr          = opciones_ioarr,
     opciones_codigo_inv     = opciones_codigo_inv,

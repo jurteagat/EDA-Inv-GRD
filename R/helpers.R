@@ -42,7 +42,7 @@ nombres_comunes <- tibble::tribble(
   "fec_ini_ejec_fisica",      "Ini. ejec. física",
   "num_habitantes_benef",     "Hab. benef.",
   "monto_et_f8",              "Monto ET/F8",
-  "n_proyectos",              "N° proyectos",
+  "n_proyectos",              "N° inversiones",
   "costo_actualizado_prom",   "Costo actual. (prom.)",
   "monto_viable_prom",        "Monto viable (prom.)",
   "pct_costo_vs_viable",      "% Costo vs. viable",
@@ -133,7 +133,7 @@ tabla_cortes_departamento <- function(df_plain, depto_lkp) {
     dplyr::mutate(
       departamento = dplyr::coalesce(departamento, glue::glue("Cod {cod_depto}"))
     ) |>
-    dplyr::group_by(departamento) |>
+    dplyr::group_by(cod_depto, departamento) |>
     dplyr::summarise(
       n_inversiones      = dplyr::n(),
       costo_total        = sum(costo_actualizado,  na.rm = TRUE),

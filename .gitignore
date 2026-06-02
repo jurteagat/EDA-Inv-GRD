@@ -3,10 +3,26 @@
 .RData
 .Ruserdata
 folder_xyz_ignore/
+
+# Directorio de datos crudos completo (archivos grandes de MEF/Drive)
+raw/
+
+# Extensiones de datos — ignoradas en todo el repo
 *.csv
 *.gpkg
 *.rds
-!midputs/rds/_cache_app.rds
+*.zip
+*.shp
+*.dbf
+*.prj
+*.shx
+*.cpg
+*.shp.xml
+
+# Excepciones: archivos pequeños curados que sí se rastrean
+!midputs/rds/nombres_abreviados.csv
+!midputs/rds/fechas_fuentes.csv
+
 ._*
 *.html
 .quarto/

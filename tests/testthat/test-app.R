@@ -24,6 +24,7 @@ test_that("aplicar filtro de tipología reduce n_filtrados", {
   n_total <- app$get_text("#n_filtrados")
 
   app$set_inputs(f_tipologia = "Defensas ribereñas")
+  app$click("recalcular")
   app$wait_for_idle()
   n_filt <- app$get_text("#n_filtrados")
 
@@ -38,8 +39,8 @@ test_that("downloadButton de CSV produce contenido", {
   app <- AppDriver$new(here::here(), timeout = 60000, load_timeout = 90000)
   on.exit(app$stop(), add = TRUE)
 
-  # Navegar a la pestaña de descargas
-  app$click("tab_datos_descargas")
+  # Navegar a la pestaña de ficha técnica
+  app$click("tab_ficha_tecnica")
   app$wait_for_idle()
 
   tmp <- tempfile(fileext = ".csv")

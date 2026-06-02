@@ -19,6 +19,8 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(scales)
   library(glue)
+  library(sf)
+  library(tinytable)
 })
 
 source(here::here("R/helpers.R"))
@@ -42,13 +44,21 @@ vars_mostrar <- c(
   "des_tipologia", "entidad", "nivel", "estado", "situacion",
   "monto_viable", "costo_actualizado", "avance_fisico", "avance_ejecucion",
   "pia_anio_actual", "pim_anio_actual", "deven_acumul_anio_ant",
-  "ubigeo", "fec_ini_ejecucion", "num_habitants_benef",
+  "ubigeo", "fec_ini_ejecucion", "num_habitantes_benef",
   "ind_ioarr_emerg", "tipo_inversion", "des_modalidad"
 )
+
+vars_monetarias <- c("monto_viable", "costo_actualizado",
+                     "pia_anio_actual", "pim_anio_actual",
+                     "deven_acumul_anio_ant")
 
 tabla_attr <- inv |>
   sf::st_drop_geometry() |>
   dplyr::select(dplyr::any_of(vars_mostrar)) |>
+  dplyr::mutate(dplyr::across(
+    dplyr::any_of(vars_monetarias),
+    ~scales::label_number(scale = 1e-6, accuracy = 0.1, suffix = " M")(.)
+  )) |>
   tidyr::pivot_longer(
     dplyr::everything(),
     names_to  = "Variable",
@@ -60,7 +70,8 @@ tabla_attr <- inv |>
     Valor    = dplyr::if_else(is.na(Valor) | Valor == "NA", "—", Valor)
   )
 
-knitr::kable(tabla_attr, col.names = c("Variable", "Valor"))
+tinytable::tt(tabla_attr, col.names = c("Variable", "Valor"),
+              width = c(0.32, 0.68))
 ```
 
 ---
@@ -89,13 +100,14 @@ if (nrow(serie) > 0) {
   ggplot2::ggplot(serie_ag,
                   ggplot2::aes(x = anio, y = Soles, color = Métrica)) +
     ggplot2::geom_line(linewidth = 0.9) +
-    ggplot2::geom_point(size = 1.8) +
     ggplot2::scale_color_manual(
       values = c(PIA = "#1A9850", PIM = "#4393C3", Devengado = "#D6604D")
     ) +
     ggplot2::scale_y_continuous(labels = scales::label_comma()) +
-    ggplot2::labs(x = "Año", y = "Soles acumulados", color = NULL) +
-    theme_grd()
+    ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
+    ggplot2::labs(x = NULL, y = "Soles acumulados", color = NULL) +
+    theme_grd() +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 7))
 } else {
   cat("_Sin datos de serie temporal para esta inversión._")
 }
@@ -105,14 +117,39 @@ if (nrow(serie) > 0) {
 
 ## Ubicación
 
-```{r ubicacion, echo=FALSE}
-coords_sf <- tryCatch(sf::st_coordinates(inv), error = function(e) NULL)
+```{r ubicacion, echo=FALSE, fig.width=5, fig.height=4}
+ruta_deptos <- here::here("midputs", "rds", "deptos_geo.rds")
+coords_sf   <- tryCatch(sf::st_coordinates(inv), error = function(e) NULL)
+
 if (!is.null(coords_sf) && nrow(coords_sf) > 0) {
   cat(glue::glue(
     "**Longitud:** {round(coords_sf[1,'X'], 5)}  \n",
     "**Latitud:** {round(coords_sf[1,'Y'], 5)}  \n",
-    "**Ubigeo:** {inv$ubigeo[1]}"
+    "**Ubigeo:** {inv$ubigeo[1]}\n\n"
   ))
+
+  if (file.exists(ruta_deptos)) {
+    deptos_geo <- readRDS(ruta_deptos)
+    cod_d      <- stringr::str_sub(inv$ubigeo[1], 1, 2)
+    depto_sf   <- dplyr::filter(deptos_geo, cod_depto == cod_d)
+
+    if (nrow(depto_sf) > 0) {
+      punto_sf <- sf::st_as_sf(
+        data.frame(lon = coords_sf[1, "X"], lat = coords_sf[1, "Y"]),
+        coords = c("lon", "lat"), crs = 4326
+      )
+
+      print(
+        ggplot2::ggplot() +
+          ggplot2::geom_sf(data = depto_sf,
+                           fill = "#AED6F1", color = "#2980B9", linewidth = 0.6) +
+          ggplot2::geom_sf(data = punto_sf,
+                           color = "#D6604D", size = 3.5, shape = 16) +
+          ggplot2::theme_void() +
+          ggplot2::labs(caption = glue::glue("Ubigeo: {inv$ubigeo[1]}"))
+      )
+    }
+  }
 } else {
   cat("_Coordenadas no disponibles._")
 }
