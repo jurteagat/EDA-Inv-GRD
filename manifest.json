@@ -7138,80 +7138,14 @@
     }
   },
   "files": {
-    "._.git": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.gitattributes": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.gitignore": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.quarto": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.Rhistory": {
-      "checksum": "b6e3e724436e517cc6c97dee53dcb75e"
-    },
-    "._.Rprofile": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.Rproj.user": {
-      "checksum": "b6e3e724436e517cc6c97dee53dcb75e"
-    },
-    "._00_datos_entrada.html": {
-      "checksum": "10ab62f8247ebee06c88baea7b6a4e46"
-    },
-    "._00_datos_entrada.qmd": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._app.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._CLAUDE.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._EDA_Inv_GRD_v1.html": {
-      "checksum": "a7be35f759e0d830cacd1e0298f9a708"
-    },
-    "._EDA_Inv_GRD_v1.qmd": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._global.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._manifest.json": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._README.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._renv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._renv.lock": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._reporte_inversion.qmd": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._summarytools_white.css": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._tests": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
     ".gitattributes": {
       "checksum": "d41d8cd98f00b204e9800998ecf8427e"
     },
-    ".Rprofile": {
-      "checksum": "90b6021826c1e6975bbf681affad2699"
+    ".gitignore": {
+      "checksum": "d277c511d0fd3618ee00ecd18a6308e9"
     },
-    "00_datos_entrada.html": {
-      "checksum": "ba84d45cff050c8792c5a4a81968a369"
+    ".Rprofile": {
+      "checksum": "030fceca42ccd3a25d6aae3cfaec6bb2"
     },
     "00_datos_entrada.qmd": {
       "checksum": "ad6aa6a8482e10272017cb82adab20f7"
@@ -7222,296 +7156,23 @@
     "CLAUDE.md": {
       "checksum": "acb3bb5634abeeb0e98f566ea31a0dce"
     },
-    "EDA_Inv_GRD_v1.html": {
-      "checksum": "4109be4e77b2dab7bc9f5e229fcf845a"
-    },
     "EDA_Inv_GRD_v1.qmd": {
       "checksum": "219deb7bd2778913d0f02a80737aff4f"
     },
-    "folder_xyz_ignore/._Análisis exploratorio de Inversiones de GRD v1.1.pdf": {
-      "checksum": "c0d0fee2d259c039e43aeb469d728b89"
-    },
-    "folder_xyz_ignore/._observaciones_app1.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/._plan_0.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/._plan_1.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/._plan_actualizacion_shinyapp.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/._plan_arranque_shinyapp.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/._plan_datos_01.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/._plan_nombres_abreviados.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/._plan_observaciones_app1.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "folder_xyz_ignore/Análisis exploratorio de Inversiones de GRD v1.1.pdf": {
-      "checksum": "3b09cf47b9e1587a49f4259b01b0358d"
-    },
-    "folder_xyz_ignore/damnificados_peligros_2003_2024.csv": {
-      "checksum": "52efdc1a6812bdcb5283f9f25dd330ef"
-    },
-    "folder_xyz_ignore/DETALLE_INVERSIONES_GRD_PIRCC_ANIN_tot.csv": {
-      "checksum": "9895fbe68611c6636e30bbbe4e94e046"
-    },
-    "folder_xyz_ignore/df_pu_geoinvierte_g.gpkg": {
-      "checksum": "023b039d280004157cfe8e6238d331e7"
-    },
-    "folder_xyz_ignore/grafico_base_damnificados.png": {
-      "checksum": "1d86036b36bea2c74ea2ccbd40c05004"
-    },
-    "folder_xyz_ignore/grafico_base.png": {
-      "checksum": "ff3948097a5c698541bc9f44551e20b9"
-    },
-    "folder_xyz_ignore/grd_2012_2025_t5_rev3_df_sample_300.csv": {
-      "checksum": "3f25a6eb40b5a2232224b38a80ed1e93"
-    },
-    "folder_xyz_ignore/grd_2012_2025_t5_rev3_df.csv": {
-      "checksum": "bd0de05085d19ab8a6c905cecfda042f"
-    },
-    "folder_xyz_ignore/observaciones_app1.md": {
-      "checksum": "f84cffb8422213b4d2a7fcd0a4447825"
-    },
-    "folder_xyz_ignore/plan_0.md": {
-      "checksum": "cd40644e4a8049a294fcfb44af5820b5"
-    },
-    "folder_xyz_ignore/plan_1.md": {
-      "checksum": "51099120fd664de8fcb60adc88115715"
-    },
-    "folder_xyz_ignore/plan_actualizacion_shinyapp.md": {
-      "checksum": "fe660b40301719f030b947fa19feb67a"
-    },
-    "folder_xyz_ignore/plan_arranque_shinyapp.md": {
-      "checksum": "11b0bce0bb9c76687100672c496244d7"
-    },
-    "folder_xyz_ignore/plan_datos_01.md": {
-      "checksum": "77cc77d510408f124ea23a5ada7044d0"
-    },
-    "folder_xyz_ignore/plan_nombres_abreviados.md": {
-      "checksum": "92cd2a84092a6ab573c023e7046c312f"
-    },
-    "folder_xyz_ignore/plan_observaciones_app1.md": {
-      "checksum": "a0665ccbd2276ec3c45f562ad6b59c01"
+    "EDA-Inv-GRD.Rproj": {
+      "checksum": "c8d3f84a410f46d4d8b03a268e313e35"
     },
     "global.R": {
       "checksum": "884e5092e77759636b6b32400e978f08"
     },
-    "midputs/._rds": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/grd_2012_2025_t.csv": {
-      "checksum": "8f8234d17238ad046cadc902ef035b38"
-    },
-    "midputs/rds/_cache_app.rds": {
-      "checksum": "9231d76778e13c2d70b9cfa2f628e2b9"
-    },
-    "midputs/rds/.__cache_app.rds": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/._deptos_geo.rds": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/._det_inv.rds": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/._diccionario.rds": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/._fechas_fuentes.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/._geoinv.rds": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/._grd_2012_25.rds": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/._nombres_abreviados.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "midputs/rds/deptos_geo.rds": {
-      "checksum": "cc12a3fc40778c8c5eca111ac7d7d514"
-    },
-    "midputs/rds/det_inv.rds": {
-      "checksum": "808e872f87988a5a30f24174bfc59758"
-    },
-    "midputs/rds/diccionario.rds": {
-      "checksum": "6e89e984f9aed6aef559e722aedf81c4"
-    },
-    "midputs/rds/fechas_fuentes.csv": {
-      "checksum": "199402e1ca476076865f23c5f7840355"
-    },
-    "midputs/rds/geoinv.rds": {
-      "checksum": "e38e79ba2178b4b8e08f277ed0f89fe4"
-    },
-    "midputs/rds/grd_2012_25.rds": {
-      "checksum": "7373682b9a37ef470351ba475afdab00"
-    },
-    "midputs/rds/nombres_abreviados.csv": {
-      "checksum": "3f50b41c81f205544c8604ad1005d807"
-    },
-    "R/._datos.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "R/._exportar.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "R/._helpers.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
     "R/datos.R": {
-      "checksum": "ecfb8b350316959c63e92682406df659"
+      "checksum": "21e79c432300a39fda62fd6ecfaf1e44"
     },
     "R/exportar.R": {
       "checksum": "3a3cffc01e45fbfe07b7848a9e7dbd8a"
     },
     "R/helpers.R": {
       "checksum": "15c86762fc38f582876eb1d18ea790ef"
-    },
-    "raw/._deptos_shp_raw": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._deptos_shp.zip": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._DETALLE_INVERSIONES_20260315.csv": {
-      "checksum": "43c9ba74c2fb11f4cd894b304b651489"
-    },
-    "raw/._DETALLE_INVERSIONES_20260526.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._DETALLE_INVERSIONES_20260527.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._DETALLE_INVERSIONES_20260531.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._Detalle_Inversiones_Diccionario_20260522.csv": {
-      "checksum": "79d0a360919188902cd48de360a0ba77"
-    },
-    "raw/._Detalle_Inversiones_Diccionario_20260526.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._Detalle_Inversiones_Diccionario_20260527.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._Detalle_Inversiones_Diccionario_20260531.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._Detalle_Inversiones_Diccionario.csv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._DETALLE_INVERSIONES.csv": {
-      "checksum": "0df7d58a995b9c534c5c2ff4e1118c67"
-    },
-    "raw/._df_pu_geoinv_inv_g_20260526.gpkg": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._df_pu_geoinv_inv_g_20260531.gpkg": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/._df_pu_geoinv_inv_g.gpkg": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/__MACOSX/._DEPARTAMENTOS.dbf": {
-      "checksum": "b5fcd15e4e3fb7079fc89a8e0583b198"
-    },
-    "raw/deptos_shp_raw/__MACOSX/._DEPARTAMENTOS.shp": {
-      "checksum": "b5fcd15e4e3fb7079fc89a8e0583b198"
-    },
-    "raw/deptos_shp_raw/__MACOSX/._DEPARTAMENTOS.shx": {
-      "checksum": "b5fcd15e4e3fb7079fc89a8e0583b198"
-    },
-    "raw/deptos_shp_raw/.___MACOSX": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/._DEPARTAMENTOS.cpg": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/._DEPARTAMENTOS.dbf": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/._DEPARTAMENTOS.prj": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/._DEPARTAMENTOS.shp": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/._DEPARTAMENTOS.shp.xml": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/._DEPARTAMENTOS.shx": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "raw/deptos_shp_raw/DEPARTAMENTOS.cpg": {
-      "checksum": "ae3b3df9970b49b6523e608759bc957d"
-    },
-    "raw/deptos_shp_raw/DEPARTAMENTOS.dbf": {
-      "checksum": "f7230387226fdf36cc5ae0c4414e475c"
-    },
-    "raw/deptos_shp_raw/DEPARTAMENTOS.prj": {
-      "checksum": "c742bee3d4edfc2948a2ad08de1790a5"
-    },
-    "raw/deptos_shp_raw/DEPARTAMENTOS.shp": {
-      "checksum": "8fce0cd84eba8cb13b37124972271add"
-    },
-    "raw/deptos_shp_raw/DEPARTAMENTOS.shp.xml": {
-      "checksum": "b72c97a1a1a68b1490ce46ec38bc4be8"
-    },
-    "raw/deptos_shp_raw/DEPARTAMENTOS.shx": {
-      "checksum": "4aefa5a51fa64dfc88926a5aea263eb1"
-    },
-    "raw/deptos_shp.zip": {
-      "checksum": "29e4338c83327eb9419963e6cf020116"
-    },
-    "raw/DETALLE_INVERSIONES_20260315.csv": {
-      "checksum": "ff1a7d57e2f20df71c0c880b29393dec"
-    },
-    "raw/DETALLE_INVERSIONES_20260526.csv": {
-      "checksum": "6021ae3456997d413ae7ea8faff5361a"
-    },
-    "raw/DETALLE_INVERSIONES_20260527.csv": {
-      "checksum": "6021ae3456997d413ae7ea8faff5361a"
-    },
-    "raw/DETALLE_INVERSIONES_20260531.csv": {
-      "checksum": "7b5019be0c9de0ba366b03caf3dc7049"
-    },
-    "raw/Detalle_Inversiones_Diccionario_20260522.csv": {
-      "checksum": "8632b6019126b214f0d6000ef343ffc3"
-    },
-    "raw/Detalle_Inversiones_Diccionario_20260526.csv": {
-      "checksum": "8632b6019126b214f0d6000ef343ffc3"
-    },
-    "raw/Detalle_Inversiones_Diccionario_20260527.csv": {
-      "checksum": "8632b6019126b214f0d6000ef343ffc3"
-    },
-    "raw/Detalle_Inversiones_Diccionario_20260531.csv": {
-      "checksum": "8632b6019126b214f0d6000ef343ffc3"
-    },
-    "raw/Detalle_Inversiones_Diccionario.csv": {
-      "checksum": "8632b6019126b214f0d6000ef343ffc3"
-    },
-    "raw/DETALLE_INVERSIONES.csv": {
-      "checksum": "6021ae3456997d413ae7ea8faff5361a"
-    },
-    "raw/df_pu_geoinv_inv_g_20260526.gpkg": {
-      "checksum": "515f65b4a7709786b7a35ce50f3cced4"
-    },
-    "raw/df_pu_geoinv_inv_g_20260531.gpkg": {
-      "checksum": "134c3210d1f605fc227a533fd967fc95"
-    },
-    "raw/df_pu_geoinv_inv_g.gpkg": {
-      "checksum": "24609b0b5694335825b52a04a1d3de52"
     },
     "README.md": {
       "checksum": "62e27ada9347b7b71017030fa8056410"
@@ -7525,29 +7186,8 @@
     "summarytools_white.css": {
       "checksum": "72c9fb527873ce3e612b73d8c33da4c6"
     },
-    "tests/._testthat": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "tests/._testthat.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
     "tests/testthat.R": {
       "checksum": "dd52b1990706fa75261e2e7eb20666a4"
-    },
-    "tests/testthat/.__snaps": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "tests/testthat/._test-app.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "tests/testthat/._test-datos.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "tests/testthat/._test-exportar.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "tests/testthat/._test-helpers.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
     },
     "tests/testthat/test-app.R": {
       "checksum": "05b85314051b7e274447d18aa774b899"

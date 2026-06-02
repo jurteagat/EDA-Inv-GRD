@@ -13,6 +13,7 @@ DRIVE_IDS <- list(
 #' Descarga un archivo de Google Drive solo si no existe localmente.
 descargar_si_falta <- function(id, destino) {
   if (file.exists(destino)) return(invisible(destino))
+  dir.create(dirname(destino), recursive = TRUE, showWarnings = FALSE)
   message("Descargando desde Drive → ", basename(destino))
   googledrive::drive_deauth()
   googledrive::drive_download(
@@ -63,6 +64,7 @@ cache_app_vigente <- function(ruta_cache, fuentes) {
 
 #' Serializa la lista nombrada de objetos a disco.
 guardar_cache_app <- function(objetos, ruta_cache = ruta_cache_app()) {
+  dir.create(dirname(ruta_cache), recursive = TRUE, showWarnings = FALSE)
   saveRDS(objetos, file = ruta_cache, compress = FALSE)
   invisible(ruta_cache)
 }
@@ -76,6 +78,7 @@ cargar_cache_app <- function(ruta_cache = ruta_cache_app()) {
 #' El campo de código departamental se detecta automáticamente buscando
 #' nombres comunes: CCDD, IDDPTO, COD_DPTO, UBIGEO (2 primeros dígitos).
 preparar_deptos_geo <- function(ruta_descarga, ruta_rds) {
+  dir.create(dirname(ruta_descarga), recursive = TRUE, showWarnings = FALSE)
   googledrive::drive_deauth()
   googledrive::drive_download(
     googledrive::as_id(DRIVE_IDS$deptos_shp),
@@ -127,6 +130,7 @@ preparar_deptos_geo <- function(ruta_descarga, ruta_rds) {
     dplyr::select(cod_depto, geometry) |>
     dplyr::filter(!is.na(cod_depto))
 
+  dir.create(dirname(ruta_rds), recursive = TRUE, showWarnings = FALSE)
   saveRDS(sf_final, file = ruta_rds)
   invisible(sf_final)
 }
