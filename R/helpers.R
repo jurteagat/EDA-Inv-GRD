@@ -4,7 +4,7 @@
 # --- Etiquetas de variables ---------------------------------------------------
 nombres_comunes <- tibble::tribble(
   ~variable,                  ~nombre_comun,
-  "codigo_unico",             "Cód. Único",
+  "codigo_unico",             "CUI",
   "codigo_pro",               "Cód. Programa",
   "link_ssi",                 "Enlace SSI",
   "des_servicio",             "Servicio",
@@ -15,6 +15,7 @@ nombres_comunes <- tibble::tribble(
   "des_tipologia",            "Tipología",
   "nivel",                    "Nivel",
   "entidad",                  "Entidad",
+  "nombre_uep",               "UE Presup.",
   "nombre_inversion",         "Nombre inversión",
   "nombre_abreviado",         "Nombre abreviado",
   "estado",                   "Estado",
@@ -35,7 +36,7 @@ nombres_comunes <- tibble::tribble(
   "saldo_ejecutar",           "Saldo ejec.",
   "tiene_f12b",               "Tiene F-12B",
   "avance_fisico",            "Av. físico",
-  "avance_ejecucion",         "Av. ejecución",
+  "avance_financiero",        "Av. Financiero",
   "ind_ioarr_emerg",          "IOARR/Emerg.",
   "ubigeo",                   "Ubigeo",
   "fec_ini_ejecucion",        "Ini. ejecución",
@@ -53,7 +54,7 @@ nombres_comunes <- tibble::tribble(
   "devengado_acum",           "Deveng. acum. 2012-2025",
   "costo_total",              "Costo total (S/)",
   "n_inversiones",            "N° inversiones",
-  "pct_ejecucion_prom",       "% Ejec. promedio"
+  "pct_ejecucion_prom",       "% Av. financiero prom."
 )
 
 label_var <- function(vars) {
@@ -113,7 +114,7 @@ tabla_promedios_tipologia <- function(df) {
     dplyr::filter(!is.na(des_tipologia)) |>
     dplyr::group_by(des_tipologia) |>
     dplyr::summarise(
-      n_proyectos            = dplyr::n(),
+      n_inversiones          = dplyr::n(),
       costo_actualizado_prom = mean(costo_actualizado, na.rm = TRUE),
       monto_viable_prom      = mean(monto_viable,      na.rm = TRUE),
       .groups = "drop"
@@ -137,7 +138,7 @@ tabla_cortes_departamento <- function(df_plain, depto_lkp) {
     dplyr::summarise(
       n_inversiones      = dplyr::n(),
       costo_total        = sum(costo_actualizado,  na.rm = TRUE),
-      pct_ejecucion_prom = mean(avance_ejecucion,  na.rm = TRUE),
+      pct_ejecucion_prom = mean(avance_financiero, na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::arrange(dplyr::desc(costo_total))

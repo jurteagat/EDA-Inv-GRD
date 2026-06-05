@@ -21,8 +21,10 @@ raw/
 
 # Excepciones: archivos pequeños curados que sí se rastrean
 !midputs/rds/nombres_abreviados.csv
-!midputs/rds/fechas_fuentes.csv
+# fechas_fuentes.csv ya no se rastrea: se descarga desde Drive (DRIVE_IDS$fechas_fuentes)
 
 ._*
 *.html
 .quarto/
+
+CLAUDE.md

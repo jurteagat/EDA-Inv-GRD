@@ -42,7 +42,7 @@ serie <- datos$serie
 vars_mostrar <- c(
   "codigo_unico", "nombre_inversion", "nombre_abreviado",
   "des_tipologia", "entidad", "nivel", "estado", "situacion",
-  "monto_viable", "costo_actualizado", "avance_fisico", "avance_ejecucion",
+  "monto_viable", "costo_actualizado", "avance_fisico", "avance_financiero",
   "pia_anio_actual", "pim_anio_actual", "deven_acumul_anio_ant",
   "ubigeo", "fec_ini_ejecucion", "num_habitantes_benef",
   "ind_ioarr_emerg", "tipo_inversion", "des_modalidad"
@@ -55,6 +55,10 @@ vars_monetarias <- c("monto_viable", "costo_actualizado",
 tabla_attr <- inv |>
   sf::st_drop_geometry() |>
   dplyr::select(dplyr::any_of(vars_mostrar)) |>
+  dplyr::mutate(dplyr::across(
+    dplyr::any_of("avance_financiero"),
+    ~dplyr::if_else(is.na(.), NA_character_, paste0(round(., 1), "%"))
+  )) |>
   dplyr::mutate(dplyr::across(
     dplyr::any_of(vars_monetarias),
     ~scales::label_number(scale = 1e-6, accuracy = 0.1, suffix = " M")(.)
