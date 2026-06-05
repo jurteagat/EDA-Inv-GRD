@@ -20,7 +20,7 @@ execute:
   eval: true
 params:
   preparar_datos:         false
-  datos_leer_desde_local: false
+  datos_leer_desde_local: true
 ---
 
 # Arreglo YAML
@@ -36,18 +36,20 @@ if (!exists("params")) {
   # Asegúrate de cambiar "mi_reporte.qmd" por el nombre exacto de tu archivo
   params <- rmarkdown::yaml_front_matter("EDA_Inv_GRD_v1.qmd")$params
 }
+
+params
 ```
 
 # Presentación
 
 Este cuaderno realiza la **depuración** y el **análisis exploratorio
-de datos (EDA)** de las inversiones peruanas del programa *Gestión de
-Riesgos y Emergencias*. Combina tres fuentes:
+de datos (EDA)** de las inversiones peruanas en el marco del programa/ división funcional de  *Gestión de
+Riesgos y Emergencias* registrado en INVIERTE.PE del Ministerio de Economía y Finanzas (MEF). Combina tres fuentes:
 
 1. **`df_det_inv`** — Detalle de inversiones del MEF (tabular,
    descargable del portal de datos abiertos).
 2. **`df_pu_geoinv_inv_g`** — Puntos georreferenciados de inversiones
-   (capa ESRI del MEF).
+   (portal GeoInvierte del MEF).
 3. **`df_grd_2012_25`** — Serie de tiempo de ejecución de gasto
    2012-2025 (archivo interno en `midputs/`), extendida a 2026 con el
    detalle de inversiones.
@@ -185,14 +187,15 @@ nombres_comunes <- tibble::tribble(
   "codigo_unico",             "CUI",
   "codigo_pro",               "Cód. Programa",
   "link_ssi",                 "Enlace SSI",
-  "des_servicio",             "Tipología- Servicio",
-  "des_tipologia_esri",       "Tipología - Servicio (ESRI)",
+  # "des_servicio",             "Tipología- Servicio",  
   "geometry",                 "Geometría",
+  # "des_tipologia_esri",       "Tipología - Servicio (ESRI)",
   "monto_viable",             "Monto viable",
-  "costo_actualizado",        "Costo actualizado",
+  "costo_actualizado",        "Costo Actual.",
   "des_tipologia",            "Tipología",
   "nivel",                    "Nivel de Gobierno",
   "entidad",                  "Entidad",
+  "nombre_uep",               "UE Presup.",
   "nombre_inversion",         "Nombre inversión",
   "nombre_abreviado",         "Nombre abreviado",
   "estado",                   "Estado",
@@ -211,33 +214,46 @@ nombres_comunes <- tibble::tribble(
   "pia_anio_actual",          "PIA actual",
   "pim_anio_actual",          "PIM actual",
   "dev_anio_actual",          "Devengado actual",
-  "saldo_ejecutar",           "Saldo a ejecutar",
+  # "saldo_ejecutar",           "Saldo a ejecutar",
   "tiene_f12b",               "F-12B",
   "avance_fisico",            "Av. físico",
-  "avance_ejecucion",         "Av. ejecución",
+  # "avance_ejecucion",         "Av. ejecución",
   "ind_ioarr_emerg",          "IOARR Emergencia",
   "ubigeo",                   "Ubigeo",
   "fec_ini_ejecucion",        "Ini. ejecución",
   "fec_ini_ejec_fisica",      "Ini. ejec. física",
   "num_habitantes_benef",     "Hab. benef.",
-  "monto_et_f8",              "Monto ET/F8",
-  "n_proyectos",              "N° proyectos",
-  "costo_actualizado_prom",   "Costo actual. (prom.)",
+  "monto_et_f8",              "Monto ET-F8",
+  "n_inversiones",              "N° Inversiones",
+  "costo_actualizado_prom",   "Costo A. (prom.)",
   "monto_viable_prom",        "Monto viable (prom.)",
-  "pct_costo_vs_viable",      "% Costo vs. viable",
-  "pct_pim_vs_pia",           "% PIM vs. PIA",
+  "pct_costo_vs_viable",      "V.% Costo A. vs M. viable",
+  "pct_pim_vs_pia",           "V.% PIM vs PIA",
   "departamento",             "Departamento",
-  "pct_ejecucion",            "% Ejecución (Deveng./PIM)",
+  "pct_ejecucion",            "% Ejecución An.",
   "pct_pim_pia",              "% PIM vs. PIA (portafolio)",
+  "avance_financiero",        "Av. Financiero",
   "devengado_acum",           "Deveng. acum. 2012-2026"
 )
 
 definiciones_locales <- tibble::tribble(
   ~variable,              ~definicion_local,
   "codigo_pro",           "Código del programa de inversiones (capa ESRI).",
+  "avance_fisico",        "Desarrollo de las metas de los productos a través de la ejecución de las obras, la adquisición de bienes y servicios para la generación de activos.",
+  # "avance_ejecucion",     "Se refiere a las tareas y acciones que se desarrollan en los productos y componentes de la inversión en la Fase de Ejecución",
   "link_ssi",             "URL a la inversión en el SSI del MEF (capa ESRI).",
-  "des_servicio",         "Tipología de la inversión o Denominación del servicio proveído.",
-  "des_tipologia_esri",   "Tipología de la inversión o Denominación del servicio proveído (capa ESRI).",
+  "n_inversiones",        "Cantidad de inversiones correspondientes",
+  "avance_financiero",    "Avance Financiero. Corresponde al porcentaje de devengado acumulado, respecto del costo actualizado",
+  "costo_actualizado_prom",   "Costo actualizado promedio",
+  "monto_viable_prom",        "Monto viable promedio",
+  "pct_costo_vs_viable",      "Variación porcentual del costo actualizado respecto del monto viable",
+  "pct_pim_vs_pia",           "Variación porcentual del PIM respecto del PIA en el año actual, por inversión",
+  "pct_pim_pia",              "Variación porcentual del PIM respecto del PIA en el año actual, global",
+  "devengado_acum",           "Devengado acumulado periodo 2012-2026",
+  "pct_ejecucion",        "% Ejecución presupuestal del año. Devengado respecto del PIM",
+  # "des_servicio",         "Tipología de la inversión o Denominación del servicio proveído.",
+  "tipo_inversion",       "Denominación de la tipología de inversión, correspondiente al servicio público",
+  # "des_tipologia_esri",   "Tipología de la inversión o Denominación del servicio proveído (capa ESRI).",
   "geometry",             "Geometría con la ubicación del objeto."
 )
 
@@ -364,12 +380,12 @@ columnas necesarias para el análisis.
 # Columnas mínimas que necesitamos para el análisis.
 cols_det_inv <- c(
   "CODIGO_UNICO", "MONTO_VIABLE", "COSTO_ACTUALIZADO", "DES_TIPOLOGIA",
-  "NIVEL", "ENTIDAD", "NOMBRE_INVERSION", "ESTADO", "SITUACION",
+  "NIVEL", "ENTIDAD", "NOMBRE_INVERSION", "ESTADO", "SITUACION", "NOMBRE_UEP",
   "ALTERNATIVA", "FECHA_VIABILIDAD", "PROGRAMA", "SUBPROGRAMA",
   "MARCO", "TIPO_INVERSION", "DES_MODALIDAD", "REGISTRADO_PMI",
   "EXPEDIENTE_TECNICO", "INFORME_CIERRE", "DEVEN_ACUMUL_ANIO_ANT",
-  "PIA_ANIO_ACTUAL", "PIM_ANIO_ACTUAL", "DEV_ANIO_ACTUAL", "SALDO_EJECUTAR",
-  "TIENE_F12B", "AVANCE_FISICO", "AVANCE_EJECUCION",
+  "PIA_ANIO_ACTUAL", "PIM_ANIO_ACTUAL", "DEV_ANIO_ACTUAL", # "SALDO_EJECUTAR",
+  "TIENE_F12B", "AVANCE_FISICO", # "AVANCE_EJECUCION",
   "IND_IOARR_EMERG", "UBIGEO", "FEC_INI_EJECUCION",
   "FEC_INI_EJEC_FISICA", "NUM_HABITANTES_BENEF", "MONTO_ET_F8"
 )
@@ -407,6 +423,10 @@ df_pu_geoinv_inv_g <- readRDS(here::here("midputs", "rds", "geoinv.rds"))
 local({
   n <- janitor::make_clean_names(names(df_pu_geoinv_inv_g))
   n[n == "cod_unico"]     <- "codigo_unico"
+  # Renombramos la tipología del geopackage a des_tipologia_esri solo para
+  # evitar que colisione con el des_tipologia del detalle MEF en el inner_join.
+  # Esta columna se descarta aguas abajo (no se selecciona en df_pu_geoinv_inv_g_dp):
+  # por decisión, la tipología de análisis es únicamente des_tipologia del MEF.
   n[n == "des_tipologia"] <- "des_tipologia_esri"
   names(df_pu_geoinv_inv_g) <<- n
 })
@@ -479,6 +499,13 @@ dplyr::glimpse(df_grd_2012_25)
 df_grd_2012_25[, .(anio_min = min(anio, na.rm = TRUE),
                    anio_max = max(anio, na.rm = TRUE))]
 ```
+
+## Decisiones específicas
+
+- Para la **tipología de la inversión** solo se usará la variable `des_tipologia`
+  (del detalle del MEF). Dado que hay variables redundantes, se toma la que
+  presenta menos datos faltantes: ya **no** se consideran `des_servicio` ni
+  `des_tipologia_esri`, para evitar confusiones.
 
 # Universo GRD común a las tres bases
 
@@ -565,7 +592,7 @@ df_pu_geoinv_inv_g_dp <- df_pu_geoinv_inv_g |>
   # Restringir al universo común antes de cualquier otro procesamiento.
   dplyr::filter(codigo_unico %in% codigos_grd_comunes) |>
   dplyr::select(codigo_unico, codigo_pro, link_ssi,
-                des_servicio, des_tipologia_esri,
+                # des_servicio, des_tipologia_esri,
                 nom_funcio, estado_sit, marco,  
                 departamen, provincia, distrito, nombre_loc, 
                 incluido_pmi, id_ccpp, avance, avan_anual) |>
@@ -592,6 +619,10 @@ desfasara, el join fallaría ruidosamente en lugar de producir NAs silenciosos.
 ```{r fusionar-geo}
 df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dp |>
   dplyr::inner_join(df_det_inv_grd_dp, by = "codigo_unico")
+
+# Nota: avance_financiero se calcula más abajo, en el chunk `fusionar-temporal`,
+# porque su numerador (devengado_acum 2012-2026) proviene de la serie temporal
+# que aún no se ha construido en este punto.
 
 # [POR REVISAR]
 stopifnot(nrow(df_pu_geoinv_inv_g_dpf) == length(codigos_grd_comunes))
@@ -651,6 +682,27 @@ df_grd_2012_25_dpf <- df_grd_serie_dp |>
     by = "codigo_unico"
   )
 
+# Devengado acumulado 2012-2026 por inversión: misma definición canónica que
+# usan las tablas top-10 (sum(devengado) sobre la serie). Se calcula una vez
+# aquí y se une a la base geoespacial para operacionalizar avance_financiero,
+# de modo que el indicador sea consistente en todo el cuaderno.
+deveng_acum_x_inv <- df_grd_serie_dp |>
+  dplyr::group_by(codigo_unico) |>
+  dplyr::summarise(devengado_acum = sum(devengado, na.rm = TRUE),
+                   .groups = "drop")
+
+# avance_financiero = devengado acumulado 2012-2026 / costo actualizado * 100.
+# Si el costo actualizado es 0 o NA, queda NA (evita 0/0 e Inf).
+df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
+  dplyr::left_join(deveng_acum_x_inv, by = "codigo_unico") |>
+  dplyr::mutate(
+    avance_financiero = dplyr::if_else(
+      is.na(as.numeric(costo_actualizado)) | as.numeric(costo_actualizado) == 0,
+      NA_real_,
+      dplyr::coalesce(devengado_acum, 0) / as.numeric(costo_actualizado) * 100
+    )
+  )
+
 # [POR REVISAR]
 stopifnot(
   setequal(
@@ -690,7 +742,8 @@ print(
   ),
   method = "render"
 )
-# [ciertamente se observa que el avance físico y avance de ejecución no son representativos, por tener bastantes datos faltantes.]
+# [ciertamente se observa que el avance físico y el avance financiero no son
+# representativos, por tener bastantes datos faltantes.]
 ```
 
 ```{r skim-dpf-geo-cat}
@@ -728,7 +781,7 @@ Exploramos las relaciones bivariadas de las **variables principales** de la
 base fusionada **no multitemporal** (`df_pu_geoinv_inv_g_dpf`, una fila por
 inversión). Elegimos un conjunto acotado para que las matrices sean legibles:
 monto viable, costo actualizado, PIM y devengado del año actual, y el avance
-de ejecución.
+financiero.
 
 ### Matriz de dispersión con correlaciones
 
@@ -738,14 +791,14 @@ dispersión y el **superior** el coeficiente de correlación de Pearson. Los
 montos van en escala `log10` (filtrando valores `> 0`), como manda la
 convención del cuaderno para variables monetarias: comprime los 6+ órdenes de
 magnitud y hace visibles las relaciones. Buscar correlaciones fuertes (p. ej.
-monto viable vs. costo actualizado) y la dispersión del avance de ejecución.
+monto viable vs. costo actualizado) y la dispersión del avance financiero.
 
 ```{r ggpairs-fusionada}
 #| fig-width: 9
 #| fig-height: 8
-# Variables principales (foco monetario + ejecución).
+# Variables principales (foco monetario + avance financiero).
 vars_matriz <- c("monto_viable", "costo_actualizado",
-                 "pim_anio_actual", "dev_anio_actual", "avance_ejecucion")
+                 "pim_anio_actual", "dev_anio_actual", "avance_financiero")
 vars_monetarias <- c("monto_viable", "costo_actualizado",
                      "pim_anio_actual", "dev_anio_actual")
 
@@ -788,6 +841,19 @@ distribución entre las **tipologías más frecuentes** (top 8 por número de
 inversiones, para no saturar el eje). Los montos van en escala `log10`. Sirve
 para ver qué tipologías concentran los proyectos más caros o con mayor avance,
 y la dispersión interna de cada grupo.
+
+> **¿Cómo calcula `ggplot2` los bigotes del boxplot?** `geom_boxplot()`
+> (vía `stat_boxplot`) dibuja la caja entre el primer cuartil (Q1) y el tercer
+> cuartil (Q3) — sus *hinges* —, con la línea de la mediana en medio. Estos
+> cuartiles se obtienen con el método de cuantiles tipo-7, el mismo que usa
+> `stats::quantile()` por defecto. Los **bigotes no llegan al mínimo y máximo
+> de los datos** ni a `Q1 − 1.5·IQR` / `Q3 + 1.5·IQR` de forma exacta: cada
+> bigote se extiende hasta **el dato observado más alejado que todavía cae
+> dentro de 1.5·IQR desde su hinge** (el "cerco" o *fence* de Tukey, con
+> `IQR = Q3 − Q1`). Cualquier punto más allá de ese cerco se considera atípico
+> y se grafica individualmente — es el mismo criterio de 1.5·IQR que controla
+> el argumento `outlier.shape` / `outlier.size`. Por eso el extremo del bigote
+> siempre coincide con un valor real de la muestra, no con un cálculo teórico.
 
 ```{r boxplots-tipologia}
 # Top 8 tipologías por frecuencia (las demás saturarían el eje x).
@@ -859,8 +925,17 @@ if (nrow(fila_foco) == 0L) {
           " en la base geoespacial fusionada.")
 } else {
   # Tabla de atributos: una fila por variable con su valor actual.
+  # avance_financiero (= devengado acum. / costo actualizado) es el mismo
+  # porcentaje que cierra la gráfica de ejecución acumulada; se formatea como
+  # "%" antes del across numérico para que no se muestre como número con comas.
   tabla_fila <- fila_foco |>
     sf::st_drop_geometry() |>
+    dplyr::mutate(
+      avance_financiero = dplyr::if_else(
+        is.na(avance_financiero), NA_character_,
+        paste0(round(avance_financiero, 1), "%")
+      )
+    ) |>
     dplyr::mutate(
       dplyr::across(where(is.numeric), ~scales::comma(., accuracy = 1))
     ) |>
@@ -918,18 +993,31 @@ if (nrow(fila_foco) == 0L) {
       tidyr::pivot_longer(
         cols      = c(pia, pim, devengado),
         names_to  = "metrica",
-        values_to = "valor"
+        values_to = "valor_soles"
+      ) |>
+      dplyr::mutate(
+        metrica_lbl = dplyr::recode(metrica,
+          pia = "PIA", pim = "PIM", devengado = "Devengado")
       )
 
     if (!is.na(costo_foco) && costo_foco > 0) {
       # Expresar PIA/PIM/Devengado acumulados como % del costo actualizado.
+      # Se conserva el monto en soles (valor_soles) para mostrarlo en el hover
+      # junto con el porcentaje (text → tooltip de plotly).
       serie_largo <- dplyr::mutate(
-        serie_largo, valor = valor / costo_foco * 100
+        serie_largo,
+        valor_pct = valor_soles / costo_foco * 100,
+        text = paste0(
+          "Año: ", anio, "<br>", metrica_lbl,
+          "<br>Acumulado: S/ ", scales::label_comma()(valor_soles),
+          "<br>% del costo: ", round(valor_pct, 1), "%"
+        )
       )
 
       g <- ggplot2::ggplot(
         serie_largo,
-        ggplot2::aes(x = anio, y = valor, color = metrica)
+        ggplot2::aes(x = anio, y = valor_pct, color = metrica_lbl,
+                     group = metrica_lbl, text = text)
       ) +
         ggplot2::geom_hline(yintercept = 100, linetype = "dashed",
                             color = "grey50") +
@@ -939,7 +1027,7 @@ if (nrow(fila_foco) == 0L) {
         ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
         ggplot2::labs(
           title = glue::glue("Ejecución acumulada como % del costo actualizado — CUI {cod_foco}"),
-          x = "Año", y = "% del costo actualizado"
+          x = "Año", y = "% del costo actualizado", color = NULL
         ) +
         ggplot2::theme_minimal() +
         ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1,
@@ -948,9 +1036,17 @@ if (nrow(fila_foco) == 0L) {
       # Sin costo actualizado válido: caer al gráfico en soles acumulados.
       message("Costo actualizado inválido para ", cod_foco,
               "; muestro la serie en soles.")
+      serie_largo <- dplyr::mutate(
+        serie_largo,
+        text = paste0(
+          "Año: ", anio, "<br>", metrica_lbl,
+          "<br>Acumulado: S/ ", scales::label_comma()(valor_soles)
+        )
+      )
       g <- ggplot2::ggplot(
         serie_largo,
-        ggplot2::aes(x = anio, y = valor, color = metrica)
+        ggplot2::aes(x = anio, y = valor_soles, color = metrica_lbl,
+                     group = metrica_lbl, text = text)
       ) +
         ggplot2::geom_line(linewidth = 1) +
         ggplot2::geom_point() +
@@ -958,7 +1054,7 @@ if (nrow(fila_foco) == 0L) {
         ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
         ggplot2::labs(
           title = glue::glue("Ejecución presupuestal acumulada — CUI {cod_foco}"),
-          x = "Año", y = "Soles acumulados"
+          x = "Año", y = "Soles acumulados", color = NULL
         ) +
         ggplot2::theme_minimal() +
         ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1,
@@ -968,7 +1064,7 @@ if (nrow(fila_foco) == 0L) {
     widgets_out[["grafica"]] <- bslib::card(
       full_screen = TRUE,
       bslib::card_header(glue::glue("Ejecución presupuestal acumulada — CUI {cod_foco}")),
-      bslib::card_body(plotly::ggplotly(g))
+      bslib::card_body(plotly::ggplotly(g, tooltip = "text"))
     )
   } else {
     message("No hay serie temporal para ", cod_foco)
@@ -1006,7 +1102,7 @@ tabla_tipologia <- df_pu_geoinv_inv_g_dpf |>
   dplyr::filter(!is.na(des_tipologia)) |>
   dplyr::group_by(des_tipologia) |>
   dplyr::summarise(
-    n_proyectos            = dplyr::n(),
+    n_inversiones            = dplyr::n(),
     costo_actualizado_prom = mean(costo_actualizado, na.rm = TRUE),
     monto_viable_prom      = mean(monto_viable,      na.rm = TRUE),
     .groups                = "drop"
@@ -1201,7 +1297,7 @@ for (tp in tipologias_por_freq) {
         "Entidad: {entidad}<br>",
         "Estado: {estado}<br>",
         "Costo actual.: S/ {scales::label_comma()(costo_actualizado)}<br>",
-        "Av. ejecución: {avance_ejecucion}%"
+        "Av. financiero: {avance_financiero}%"
       ),
       # Clustering ligero (maxClusterRadius bajo = solo agrupa puntos muy
       # cercanos) + spiderfy: al llegar al zoom máximo, los puntos que
@@ -1314,7 +1410,7 @@ tabla_deptos <- df_geo_plain |>
   ) |>
   dplyr::group_by(departamento) |>
   dplyr::summarise(
-    n_proyectos         = dplyr::n(),
+    n_inversiones         = dplyr::n(),
     costo_total         = sum(costo_actualizado, na.rm = TRUE),
     monto_viable_total  = sum(monto_viable,      na.rm = TRUE),
     sobrecosto_prom_pct = mean(
@@ -1330,7 +1426,7 @@ tabla_deptos <- df_geo_plain |>
   dplyr::arrange(dplyr::desc(costo_total))
 
 # Verificar que la suma de proyectos por departamento = universo común.
-stopifnot(sum(tabla_deptos$n_proyectos) == length(codigos_grd_comunes))
+stopifnot(sum(tabla_deptos$n_inversiones) == length(codigos_grd_comunes))
 
 DT::datatable(
   tabla_deptos,
@@ -1338,7 +1434,7 @@ DT::datatable(
   filter   = "top",
   options  = list(pageLength = 15, scrollX = TRUE),
   caption  = "Inversiones GRD por departamento",
-  colnames = c("Departamento", "N° proyectos", "Costo total (S/)",
+  colnames = c("Departamento", "N° Inversiones", "Costo total (S/)",
                "Monto viable total (S/)", "% Sobrecosto prom.")
 ) |>
   DT::formatRound(c("costo_total", "monto_viable_total"), digits = 0, mark = ",") |>
@@ -1445,9 +1541,9 @@ que el boxplot resumiría.
 ```{r distrib-avances}
 df_avances <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
   dplyr::filter(!is.na(estado)) |>
-  dplyr::select(estado, avance_fisico, avance_ejecucion) |>
+  dplyr::select(estado, avance_fisico, avance_financiero) |>
   tidyr::pivot_longer(
-    cols      = c(avance_fisico, avance_ejecucion),
+    cols      = c(avance_fisico, avance_financiero),
     names_to  = "tipo_avance",
     values_to = "valor"
   ) |>
@@ -1455,7 +1551,7 @@ df_avances <- sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf) |>
     tipo_avance = dplyr::recode(
       tipo_avance,
       avance_fisico    = "Avance físico (%)",
-      avance_ejecucion = "Avance ejecución (%)"
+      avance_financiero = "Avance financiero (%)"
     )
   )
 
@@ -1465,10 +1561,12 @@ g_avances <- ggplot2::ggplot(
 ) +
   ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0.6) +
   ggplot2::geom_jitter(width = 0.2, alpha = 0.15, size = 0.8) +
-  ggplot2::facet_wrap(~tipo_avance, ncol = 2) +
-  ggplot2::scale_y_continuous(limits = c(0, 100)) +
+  # scales = "free_y": el avance financiero puede superar el 100% (devengado
+  # acumulado > costo actualizado), así que cada panel usa su propio rango y
+  # no se recortan valores ni se deforma el panel de avance físico (0-100).
+  ggplot2::facet_wrap(~tipo_avance, ncol = 2, scales = "free_y") +
   ggplot2::labs(
-    title = "Avance físico y de ejecución por estado del proyecto",
+    title = "Avance físico y financiero por estado del proyecto",
     x     = "Estado",
     y     = "Avance (%)"
   ) +
@@ -1478,15 +1576,20 @@ g_avances <- ggplot2::ggplot(
 
 bslib::card(
   full_screen = TRUE,
-  bslib::card_header("Avance físico y de ejecución por estado"),
+  bslib::card_header("Avance físico y financiero por estado"),
   bslib::card_body(plotly::ggplotly(g_avances))
 )
 ```
 
-## Detección de outliers de costo por tipología
+## Detección de outliers de sobrecosto por tipología
 
-Un outlier global mezclaría tipologías de escalas muy distintas
-(una pista de aterrizaje no es comparable con una pared de encauzamiento).
+En lugar del costo absoluto, detectamos los outliers sobre el **sobrecosto
+relativo**: la variación porcentual del costo actualizado respecto del monto
+viable (`pct_costo_vs_viable`). Así señalamos las inversiones cuyo costo se
+disparó frente a lo aprobado, sin que el tamaño de la obra distorsione el
+resultado. El umbral se calcula **por tipología** (un sobrecosto del 50% no
+significa lo mismo en defensas ribereñas que en compañías de bomberos).
+
 Usamos la regla de **Q3 + 3·IQR dentro de cada tipología** — es el
 umbral de "outlier extremo" de Tukey y es más conservador que el ±2σ
 habitual, apropiado cuando el objetivo es señalar casos verdaderamente
@@ -1494,32 +1597,36 @@ atípicos para revisión presupuestal.
 
 ```{r outliers-costo}
 # df_geo_plain fue definido en el chunk cortes-departamento.
-# Calcular límite de outlier por tipología.
-limites_iqr <- df_geo_plain |>
-  dplyr::filter(!is.na(des_tipologia) & !is.na(costo_actualizado)) |>
-  dplyr::group_by(des_tipologia) |>
-  dplyr::summarise(
-    q3  = quantile(costo_actualizado, 0.75, na.rm = TRUE),
-    iqr = IQR(costo_actualizado,           na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  dplyr::mutate(limite_outlier = q3 + 3 * iqr)
-
-df_outliers <- df_geo_plain |>
-  dplyr::left_join(limites_iqr, by = "des_tipologia") |>
-  dplyr::filter(costo_actualizado > limite_outlier) |>
+# Sobrecosto relativo por inversión: variación % del costo actualizado vs. el
+# monto viable (misma fórmula que pct_costo_vs_viable en tabla-crecimiento).
+df_sobrecosto <- df_geo_plain |>
   dplyr::mutate(
     pct_costo_vs_viable = dplyr::if_else(
       is.finite(monto_viable) & monto_viable > 0,
       (costo_actualizado - monto_viable) / monto_viable * 100,
       NA_real_
     )
+  )
+
+# Calcular el límite de outlier por tipología sobre el sobrecosto relativo.
+limites_iqr <- df_sobrecosto |>
+  dplyr::filter(!is.na(des_tipologia) & !is.na(pct_costo_vs_viable)) |>
+  dplyr::group_by(des_tipologia) |>
+  dplyr::summarise(
+    q3  = quantile(pct_costo_vs_viable, 0.75, na.rm = TRUE),
+    iqr = IQR(pct_costo_vs_viable,           na.rm = TRUE),
+    .groups = "drop"
   ) |>
+  dplyr::mutate(limite_outlier = q3 + 3 * iqr)
+
+df_outliers <- df_sobrecosto |>
+  dplyr::left_join(limites_iqr, by = "des_tipologia") |>
+  dplyr::filter(!is.na(pct_costo_vs_viable) & pct_costo_vs_viable > limite_outlier) |>
   dplyr::select(
     codigo_unico, nombre_abreviado, entidad,
     des_tipologia, costo_actualizado, pct_costo_vs_viable
   ) |>
-  dplyr::arrange(dplyr::desc(costo_actualizado))
+  dplyr::arrange(dplyr::desc(pct_costo_vs_viable))
 
 DT::datatable(
   dplyr::rename_with(df_outliers, label_var),
@@ -1527,8 +1634,8 @@ DT::datatable(
   filter   = "top",
   options  = list(pageLength = 10, scrollX = TRUE),
   caption  = glue::glue(
-    "Proyectos outlier de costo (> Q3 + 3·IQR dentro de su tipología) — ",
-    "{nrow(df_outliers)} casos"
+    "Proyectos outlier de sobrecosto (% Costo Actual vs Monto viable ",
+    "> Q3 + 3·IQR dentro de su tipología) — {nrow(df_outliers)} casos"
   )
 ) |>
   DT::formatRound(label_var(c("costo_actualizado")), digits = 0, mark = ",") |>
@@ -1620,15 +1727,19 @@ Los montos absolutos del gráfico anterior no responden si el presupuesto
 - **% Ejecución** = Devengado / PIM × 100: qué porción del presupuesto
   modificado se tradujo en gasto real. Un valor cercano al 100% indica
   buena ejecución; por debajo del 80% es señal de alerta.
-- **% PIM/PIA** = PIM / PIA × 100: cuánto se amplió el presupuesto
-  inicial. Valores altos reflejan reasignaciones internas o adiciones
-  durante el año.
+- **V.% PIM vs. PIA** = (PIM − PIA) / PIA × 100: variación porcentual del
+  presupuesto modificado respecto del inicial. Valores positivos reflejan
+  ampliaciones (reasignaciones o adiciones durante el año); valores negativos,
+  recortes. Es el análogo a nivel portafolio de `pct_pim_vs_pia` (por inversión).
 
 ```{r serie-ratios}
 serie_ratios <- serie_portafolio |>
   dplyr::mutate(
     pct_ejecucion = dplyr::if_else(pim > 0, devengado / pim * 100, NA_real_),
-    pct_pim_pia   = dplyr::if_else(pia > 0, pim      / pia * 100, NA_real_)
+    # Variación porcentual del PIM respecto del PIA (no el ratio PIM/PIA):
+    # cuánto creció (+) o se recortó (−) el presupuesto inicial cada año.
+    # Espejo, a nivel portafolio, de pct_pim_vs_pia (por inversión).
+    pct_pim_pia   = dplyr::if_else(pia > 0, (pim - pia) / pia * 100, NA_real_)
   ) |>
   dplyr::select(anio, pct_ejecucion, pct_pim_pia) |>
   tidyr::pivot_longer(
@@ -1639,8 +1750,8 @@ serie_ratios <- serie_portafolio |>
   dplyr::mutate(
     ratio = dplyr::recode(
       ratio,
-      pct_ejecucion = "% Ejecución (Dev./PIM)",
-      pct_pim_pia   = "% PIM vs. PIA"
+      pct_ejecucion = "% Ejecución Presupuestal (Dev./PIM)",
+      pct_pim_pia   = "% Variación PIM vs. PIA"
     )
   )
 
@@ -1653,7 +1764,7 @@ g_ratios <- ggplot2::ggplot(
   ggplot2::geom_point(size = 2) +
   ggplot2::scale_color_manual(
     values = c("% Ejecución (Dev./PIM)" = "#D6604D",
-               "% PIM vs. PIA"         = "#4393C3")
+               "V.% PIM vs. PIA"        = "#4393C3")
   ) +
   ggplot2::scale_y_continuous(labels = ~paste0(., "%")) +
   ggplot2::scale_x_continuous(
@@ -1675,24 +1786,25 @@ bslib::card(
 )
 ```
 
-## Top 10 entidades y tipologías por devengado acumulado 2012-2026
+## Top 10 unidades ejecutoras y tipologías por devengado acumulado 2012-2026
 
 ¿Quiénes concentran la mayor ejecución histórica? Las dos tablas siguientes
-muestran los principales ejecutores por **entidad** y por **tipología**.
-El devengado acumulado es el indicador más robusto de ejecución real porque
-es la etapa del ciclo que efectivamente genera obligación de pago.
+muestran los principales ejecutores por **unidad ejecutora presupuestal
+(`nombre_uep`)** y por **tipología**. El devengado acumulado es el indicador
+más robusto de ejecución real porque es la etapa del ciclo que efectivamente
+genera obligación de pago.
 
 ```{r top-entidades-tipologias}
-# ---- Top 10 entidades -------------------------------------------------------
-top_entidades <- data.table::as.data.table(df_grd_2012_25_dpf)[
-  , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = entidad
+# ---- Top 10 unidades ejecutoras (nombre_uep) --------------------------------
+top_uep <- data.table::as.data.table(df_grd_2012_25_dpf)[
+  , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = nombre_uep
 ][order(-devengado_acum)][1:10]
 
-dt_entidades <- DT::datatable(
-  dplyr::rename_with(top_entidades, label_var),
+dt_uep <- DT::datatable(
+  dplyr::rename_with(top_uep, label_var),
   rownames = FALSE,
   options  = list(pageLength = 10, dom = "t"),
-  caption  = "Top 10 entidades por devengado acumulado"
+  caption  = "Top 10 unidades ejecutoras por devengado acumulado"
 ) |>
   DT::formatRound(label_var("devengado_acum"), digits = 0, mark = ",")
 
@@ -1710,8 +1822,8 @@ dt_tipologias <- DT::datatable(
   DT::formatRound(label_var("devengado_acum"), digits = 0, mark = ",")
 
 htmltools::tagList(
-  htmltools::h4("Por entidad"),
-  dt_entidades,
+  htmltools::h4("Por unidad ejecutora (UEP)"),
+  dt_uep,
   htmltools::br(),
   htmltools::h4("Por tipología"),
   dt_tipologias
