@@ -12,6 +12,18 @@ exportar_csv_geo <- function(df_sf, ruta_destino) {
   invisible(ruta_destino)
 }
 
+#' Escribe la base geoespacial como GeoPackage (conserva la geometría POINT).
+#' Respeta el filtro activo recibido como df_sf.
+exportar_gpkg_geo <- function(df_sf, ruta_destino) {
+  sf::st_write(
+    df_sf, ruta_destino,
+    driver     = "GPKG",
+    delete_dsn = TRUE,
+    quiet      = TRUE
+  )
+  invisible(ruta_destino)
+}
+
 #' Escribe CSV de la base temporal filtrada.
 exportar_csv_temporal <- function(df, ruta_destino) {
   options(scipen = 999)

@@ -76,6 +76,7 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   descargar_si_falta(DRIVE_IDS$geoinv,              ruta_rds("geoinv.rds"))
   descargar_si_falta(DRIVE_IDS$grd_12_25,           ruta_rds("grd_2012_25.rds"))
   descargar_si_falta(DRIVE_IDS$nombres_abreviados,  ruta_rds("nombres_abreviados.csv"))
+  descargar_si_falta(DRIVE_IDS$fechas_fuentes,      ruta_rds("fechas_fuentes.csv"))
 
   # Shapefile departamental: generar si no existe
   if (!file.exists(ruta_rds("deptos_geo.rds"))) {
@@ -90,12 +91,12 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   # Lectura de RDS
   cols_det_inv <- c(
     "CODIGO_UNICO", "MONTO_VIABLE", "COSTO_ACTUALIZADO", "DES_TIPOLOGIA",
-    "NIVEL", "ENTIDAD", "NOMBRE_INVERSION", "ESTADO", "SITUACION",
+    "NIVEL", "ENTIDAD", "NOMBRE_INVERSION", "ESTADO", "SITUACION", "NOMBRE_UEP",
     "ALTERNATIVA", "FECHA_VIABILIDAD", "PROGRAMA", "SUBPROGRAMA",
     "MARCO", "TIPO_INVERSION", "DES_MODALIDAD", "REGISTRADO_PMI",
     "EXPEDIENTE_TECNICO", "INFORME_CIERRE", "DEVEN_ACUMUL_ANIO_ANT",
-    "PIA_ANIO_ACTUAL", "PIM_ANIO_ACTUAL", "SALDO_EJECUTAR",
-    "TIENE_F12B", "AVANCE_FISICO", "AVANCE_EJECUCION",
+    "PIA_ANIO_ACTUAL", "PIM_ANIO_ACTUAL", "DEV_ANIO_ACTUAL",
+    "TIENE_F12B", "AVANCE_FISICO",
     "IND_IOARR_EMERG", "UBIGEO", "FEC_INI_EJECUCION",
     "FEC_INI_EJEC_FISICA", "NUM_HABITANTES_BENEF", "MONTO_ET_F8"
   )
@@ -111,6 +112,10 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   local({
     n <- janitor::make_clean_names(names(df_pu_geoinv_inv_g))
     n[n == "cod_unico"]     <- "codigo_unico"
+    # Renombramos la tipología del geopackage solo para evitar que colisione
+    # con des_tipologia del detalle MEF en el inner_join. Esta columna se
+    # descarta aguas abajo (no se selecciona en df_pu_geoinv_inv_g_dp): por
+    # decisión, la tipología de análisis es únicamente des_tipologia del MEF.
     n[n == "des_tipologia"] <- "des_tipologia_esri"
     names(df_pu_geoinv_inv_g) <<- n
   })
@@ -148,8 +153,7 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
 
   df_pu_geoinv_inv_g_dp <- df_pu_geoinv_inv_g |>
     dplyr::filter(codigo_unico %in% codigos_grd_comunes) |>
-    dplyr::select(codigo_unico, codigo_pro, link_ssi,
-                  des_servicio, des_tipologia_esri) |>
+    dplyr::select(codigo_unico, codigo_pro, link_ssi) |>
     dplyr::distinct(codigo_unico, .keep_all = TRUE) |>
     dplyr::mutate(codigo_unico = as.character(codigo_unico))
   rm(df_pu_geoinv_inv_g); invisible(gc())
@@ -172,6 +176,26 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
 
   df_grd_2012_25_dp <- df_grd_2012_25[codigo_unico %in% codigos_grd_comunes]
   rm(df_grd_2012_25); invisible(gc())
+
+  # Devengado acumulado por inversión (misma definición canónica que las tablas
+  # top-10). Se calcula una vez y se une a la base geoespacial para derivar
+  # avance_financiero, de modo que el indicador sea consistente en todo el app.
+  deveng_acum_x_inv <- df_grd_2012_25_dp |>
+    dplyr::group_by(codigo_unico) |>
+    dplyr::summarise(devengado_acum = sum(devengado, na.rm = TRUE),
+                     .groups = "drop")
+
+  # avance_financiero = devengado acumulado / costo actualizado * 100.
+  # Si el costo actualizado es 0 o NA, queda NA (evita 0/0 e Inf).
+  df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
+    dplyr::left_join(deveng_acum_x_inv, by = "codigo_unico") |>
+    dplyr::mutate(
+      avance_financiero = dplyr::if_else(
+        is.na(as.numeric(costo_actualizado)) | as.numeric(costo_actualizado) == 0,
+        NA_real_,
+        dplyr::coalesce(devengado_acum, 0) / as.numeric(costo_actualizado) * 100
+      )
+    )
 
   df_grd_2012_25_dpf <- df_grd_2012_25_dp |>
     dplyr::inner_join(
@@ -220,13 +244,21 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     na.color = "#BBBBBB"
   )
 
-  # Umbrales de outlier por tipología (Q3 + 3·IQR)
+  # Umbrales de outlier por tipología (Q3 + 3·IQR) sobre el sobrecosto relativo:
+  # la variación % del costo actualizado respecto del monto viable. Así se
+  # señalan las inversiones cuyo costo se disparó frente a lo aprobado, sin que
+  # el tamaño de la obra distorsione el resultado.
   limites_iqr <- df_geo_plain |>
-    dplyr::filter(!is.na(des_tipologia) & !is.na(costo_actualizado)) |>
+    dplyr::mutate(pct_costo_vs_viable = dplyr::if_else(
+      is.finite(monto_viable) & monto_viable > 0,
+      (costo_actualizado - monto_viable) / monto_viable * 100,
+      NA_real_
+    )) |>
+    dplyr::filter(!is.na(des_tipologia) & !is.na(pct_costo_vs_viable)) |>
     dplyr::group_by(des_tipologia) |>
     dplyr::summarise(
-      q3  = quantile(costo_actualizado, 0.75, na.rm = TRUE),
-      iqr = IQR(costo_actualizado,           na.rm = TRUE),
+      q3  = quantile(pct_costo_vs_viable, 0.75, na.rm = TRUE),
+      iqr = IQR(pct_costo_vs_viable,           na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::mutate(limite_outlier = q3 + 3 * iqr)
@@ -298,6 +330,9 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   opciones_ioarr     <- c("Todos", sort(unique(stats::na.omit(
     as.character(df_geo_plain$ind_ioarr_emerg)
   ))))
+  opciones_tipo_inversion <- sort(unique(stats::na.omit(
+    df_geo_plain$tipo_inversion
+  )))
 
   opciones_codigo_inv <- df_geo_plain |>
     dplyr::transmute(
@@ -306,8 +341,8 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     ) |>
     dplyr::arrange(label)
 
-  # Fecha de los datos (generada por 00_datos_entrada.qmd)
-  ruta_fechas <- here::here("midputs", "rds", "fechas_fuentes.csv")
+  # Fecha de los datos (generada por 00_datos_entrada.qmd, descargada de Drive)
+  ruta_fechas <- ruta_rds("fechas_fuentes.csv")
   fechas_fuentes <- if (file.exists(ruta_fechas)) {
     data.table::fread(ruta_fechas)
   } else { NULL }
@@ -351,6 +386,7 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     fechas_fuentes          = fechas_fuentes,
     opciones_situacion      = opciones_situacion,
     opciones_ioarr          = opciones_ioarr,
+    opciones_tipo_inversion = opciones_tipo_inversion,
     opciones_codigo_inv     = opciones_codigo_inv,
     serie_portafolio_total  = serie_portafolio_total,
     css_leyenda             = css_leyenda

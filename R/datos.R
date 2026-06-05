@@ -7,7 +7,8 @@ DRIVE_IDS <- list(
   geoinv            = "1V1jRSqqgjeX7jJkhSag0b1ufB5PP9X2Z",
   grd_12_25         = "1ZQHQOMFD8MG0r5pgDgcniUbZR_XGDGVq",
   nombres_abreviados = "1_ielTIIhPjN-6jd9SF7w-LZrmSJRos04",
-  deptos_shp        = "1T0vOdYJLdigP1C4aykrEgJAINxit1PTA"
+  deptos_shp        = "1T0vOdYJLdigP1C4aykrEgJAINxit1PTA",
+  fechas_fuentes    = "18jPh1hreHOM2_4VonCOlzt5IiU15STOx"
 )
 
 #' Descarga un archivo de Google Drive solo si no existe localmente.

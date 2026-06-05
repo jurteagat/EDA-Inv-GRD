@@ -7,7 +7,7 @@ fixture <- tibble::tibble(
   des_tipologia      = c("Defensas", "Defensas", "Sirenas"),
   costo_actualizado  = c(1e6, 2e6, 5e5),
   monto_viable       = c(9e5, 1.8e6, 4.5e5),
-  avance_ejecucion   = c(50, 75, 10),
+  avance_financiero  = c(50, 75, 10),
   avance_fisico      = c(45, 70, 8),
   ubigeo             = c("150101", "060201", "010101"),
   entidad            = c("GOB REG LIMA", "GOB REG CAJAMARCA", "GOB REG AMAZONAS"),
@@ -24,7 +24,7 @@ depto_lkp <- tibble::tribble(
 
 # --- label_var ---------------------------------------------------------------
 test_that("label_var devuelve etiqueta conocida", {
-  expect_equal(label_var("codigo_unico"), "Cód. Único")
+  expect_equal(label_var("codigo_unico"), "CUI")
 })
 
 test_that("label_var hace passthrough para variable desconocida", {
@@ -58,7 +58,7 @@ test_that("tabla_promedios_tipologia agrega correctamente", {
   res <- tabla_promedios_tipologia(fixture)
   expect_equal(nrow(res), 2)  # 2 tipologías
   defensas <- res[res$des_tipologia == "Defensas", ]
-  expect_equal(defensas$n_proyectos, 2)
+  expect_equal(defensas$n_inversiones, 2)
   expect_equal(defensas$costo_actualizado_prom, 1.5e6)
 })
 

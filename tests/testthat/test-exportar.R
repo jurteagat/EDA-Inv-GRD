@@ -36,6 +36,18 @@ test_that("exportar_csv_geo tiene las filas esperadas", {
   unlink(tmp)
 })
 
+# --- exportar_gpkg_geo -------------------------------------------------------
+test_that("exportar_gpkg_geo conserva la geometría y las filas", {
+  sf_in <- make_sf()
+  tmp   <- tempfile(fileext = ".gpkg")
+  exportar_gpkg_geo(sf_in, tmp)
+  res   <- sf::st_read(tmp, quiet = TRUE)
+  expect_s3_class(res, "sf")
+  expect_equal(nrow(res), nrow(sf_in))
+  expect_true(all(sf::st_is(res, "POINT")))
+  unlink(tmp)
+})
+
 # --- exportar_csv_temporal ---------------------------------------------------
 test_that("exportar_csv_temporal escribe el CSV correctamente", {
   df  <- tibble::tibble(codigo_unico = "001", anio = 2024L, devengado = 1e6)
