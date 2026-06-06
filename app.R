@@ -246,23 +246,11 @@ ui <- bslib::page_navbar(
         bslib::card_body(
           htmltools::p(
             htmltools::strong("EDA de Inversiones GRD — Perú."),
-            " Proyecto en R y Quarto para la depuración y el análisis ",
-            "exploratorio de datos (EDA) de las inversiones de Gestión de ",
-            "Riesgos y Emergencias (GRD) en el marco del Invierte.pe del ",
-            "Ministerio de Economía y Finanzas (MEF) del Perú. Tiene propósito ",
-            "educativo: cada paso del procesamiento está comentado y explicado. ",
-            "Combina tres fuentes grandes del MEF: el detalle de inversiones ",
-            "(~388 MB), los puntos georreferenciados (~265 MB) y la serie de ",
-            "ejecución presupuestal 2012-2025 (~266 MB). El proyecto ofrece dos ",
-            "productos complementarios que comparten el mismo pipeline y los ",
-            "mismos datos preparados: un cuaderno Quarto que se renderiza a HTML ",
-            "autocontenido, y este dashboard Shiny interactivo con filtros ",
-            "dinámicos, mapas, distribuciones, exportaciones (CSV/GeoPackage) y ",
-            "generación de reportes PDF por inversión. Las cifras monetarias ",
-            "están en soles e incluyen ejecución hasta el año en curso (2026). ",
-            "El objetivo es facilitar el análisis transparente y reproducible de ",
-            "cómo se asignan y ejecutan los recursos públicos destinados a ",
-            "reducir el riesgo de desastres en el Perú."
+            "Dashboard Shiny para el análisis exploratorio de datos (EDA) ",
+            "de las inversiones del programa - división funcional de ",
+            "Gestión de Riesgos y Emergencias ",
+            "en el marco del Invierte.pe del Ministerio de ",
+            "Economía y Finanzas (MEF) del Perú."            
           ),
           htmltools::tags$ul(
             style = "margin-bottom:0;",
@@ -275,8 +263,8 @@ ui <- bslib::page_navbar(
             ),
             htmltools::tags$li(
               htmltools::tags$small(htmltools::tags$em(
-                "Los nombres abreviados de inversiones han sido autogenerados ",
-                "con inteligencia artificial, pueden contener imprecisiones."
+                "Los nombres abreviados de inversiones han sido generados automáticamente ",
+                "con inteligencia artificial. Pueden contener imprecisiones."
               ))
             )
           )

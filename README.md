@@ -1,6 +1,6 @@
 # EDA de Inversiones GRD — Perú
 
-Cuaderno Quarto de R y dashboard Shiny para el **análisis exploratorio de datos (EDA)** de las inversiones de *Gestión de Riesgos y Emergencias* (GRD) en el marco del Invierte.pe del Ministerio de Economía y Finanzas (MEF) del Perú.
+Cuaderno Quarto de R y dashboard Shiny para el **análisis exploratorio de datos (EDA)** de las inversiones del programa - división funcional de *Gestión de Riesgos y Emergencias* (GRD) en el marco del Invierte.pe del Ministerio de Economía y Finanzas (MEF) del Perú.
 
 El proyecto combina tres fuentes grandes del MEF: el detalle de inversiones (CSV ~388 MB), los puntos georreferenciados (GeoPackage ~265 MB) y la serie de ejecución presupuestal 2012-2025 (CSV ~266 MB).
 
