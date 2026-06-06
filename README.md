@@ -1,150 +1,95 @@
 # EDA de Inversiones GRD — Perú
 
-Cuaderno Quarto de R para la **depuración y análisis exploratorio de datos (EDA)** de las inversiones del programa *Gestión de Riesgos y Emergencias* (GRD) del Ministerio de Economía y Finanzas (MEF) del Perú. Tiene propósito educativo: cada paso está comentado y explicado.
+Cuaderno Quarto de R y dashboard Shiny para el **análisis exploratorio de datos (EDA)** de las inversiones de *Gestión de Riesgos y Emergencias* (GRD) en el marco del Invierte.pe del Ministerio de Economía y Finanzas (MEF) del Perú.
+
+El proyecto combina tres fuentes grandes del MEF: el detalle de inversiones (CSV ~388 MB), los puntos georreferenciados (GeoPackage ~265 MB) y la serie de ejecución presupuestal 2012-2025 (CSV ~266 MB).
 
 ---
 
 ## Estructura del proyecto
 
 ```
-ai_dev_ubu_r3/
-├── EDA_Inv_GRD_v1.qmd      # Cuaderno principal (fuente)
-├── EDA_Inv_GRD_v1.html     # Último render del cuaderno
-├── raw/                    # Datos brutos (no editar)
-│   ├── DETALLE_INVERSIONES_YYYYMMDD.csv
-│   ├── Detalle_Inversiones_Diccionario_YYYYMMDD.csv
-│   └── df_pu_geoinvierte_inv_g.gpkg
-├── midputs/                # Datos intermedios internos
-│   └── grd_2012_2025_t.csv
-├── articulo_grd_b/         # Visualizaciones complementarias
-├── renv/                   # Entorno reproducible de R
-├── renv.lock               # Versiones exactas de paquetes (R 4.5.3)
-├── ai_dev_ubu_r3.Rproj     # Proyecto RStudio
-├── AGENTS.md               # Reglas de programación del proyecto
-└── CLAUDE.md               # Instrucciones para el asistente IA
+EDA-Inv-GRD/
+├── EDA_Inv_GRD_v1.qmd      # Cuaderno EDA principal (consume midputs/rds/)
+├── 00_datos_entrada.qmd    # Preparación de datos (crudos → RDS → Drive)
+├── reporte_inversion.qmd   # Plantilla Typst para el reporte PDF por inversión
+├── app.R                   # Dashboard Shiny (UI bslib + server reactivo)
+├── global.R                # Precarga, pipeline y caché de arranque de la app
+├── R/                      # Funciones puras testeables
+│   ├── helpers.R           #   label_var, fmt_soles, theme_grd, agregaciones
+│   ├── datos.R             #   descargas Drive, pipeline, caché
+│   └── exportar.R          #   exportaciones CSV/GPKG/PDF
+├── tests/testthat/         # Tests unitarios + shinytest2
+├── midputs/rds/            # Datos intermedios .rds (descargados de Drive)
+├── raw/                    # Crudos del MEF (no editar, no rastreados)
+├── manifest.json           # Despliegue en Posit Connect
+├── renv/ · renv.lock       # Entorno reproducible (R 4.5.3)
+└── CLAUDE.md               # Guía detallada del proyecto
 ```
 
----
-
-## Fuentes de datos
-
-| Objeto R | Archivo | Tamaño aprox. | Origen |
-|---|---|---|---|
-| `df_det_inv` | `raw/DETALLE_INVERSIONES_YYYYMMDD.csv` | ~388 MB | Portal datos abiertos MEF |
-| `df_pu_geoinv_inv_g` | `raw/df_pu_geoinvierte_inv_g.gpkg` | ~265 MB | Capa ESRI del MEF (puntos georreferenciados) |
-| `df_grd_2012_25` | `midputs/grd_2012_2025_t.csv` | ~266 MB | Archivo interno (serie temporal 2012-2025) |
-
-Los datos de internet (`df_det_inv` y `df_pu_geoinv_inv_g`) se guardan en `raw/` con sufijo de fecha (`_YYYYMMDD`) para preservar versiones históricas. El archivo `grd_2012_2025_t.csv` nunca se re-descarga; siempre se lee desde `midputs/`.
+> Para el detalle completo de arquitectura, convenciones y pipeline, ver **`CLAUDE.md`**.
 
 ---
 
 ## Requisitos
 
 - **R ≥ 4.5.3**
-- **Quarto ≥ 1.5** (para renderizar el `.qmd`)
-- **renv** (para instalar paquetes en las versiones exactas del lock)
-
-Paquetes principales gestionados por `renv`: `tidyverse`, `data.table`, `sf`, `janitor`, `plotly`, `leaflet`, `leaflet.extras`, `crosstalk`, `leafpop`, `rmapshaper`, `DT`, `skimr`, `glue`, `scales`, `esri2sf`, `sessioninfo`.
+- **Quarto ≥ 1.5** (para renderizar los `.qmd`)
+- **renv** (instala los paquetes en las versiones exactas del lock)
 
 ---
 
-## Cómo ejecutar
-
-### 1. Clonar / abrir el proyecto
-
-Abrir `ai_dev_ubu_r3.Rproj` en RStudio o VS Code con la extensión de R.
-
-### 2. Restaurar el entorno de paquetes
-
-```r
-renv::restore()
-```
-
-Esto instala exactamente las versiones del `renv.lock`. Solo es necesario la primera vez o cuando el lock cambie.
-
-### 3. Editar las opciones del usuario (opcional)
-
-Al inicio del cuaderno (`chunk opciones-usuario`) hay dos variables:
-
-```r
-# ============ OPCIONES DEL USUARIO ============
-opcion_datos    <- 2L        # 1 = descargar de internet, 2 = usar raw/ local
-codigo_inv_foco <- "2508148" # CODIGO_UNICO para la sección de inversión específica
-# ==============================================
-```
-
-- `opcion_datos = 1L` descarga el CSV principal, el diccionario y la capa ESRI desde internet y los guarda en `raw/` con fecha del día. Si la descarga falla, cae automáticamente al archivo local más reciente.
-- `opcion_datos = 2L` (por defecto) lee directamente el archivo más reciente de `raw/` sin conexión.
-
-### 4. Renderizar
-
-```r
-quarto::quarto_render("EDA_Inv_GRD_v1.qmd")
-```
-
-O desde la terminal:
+## Comandos clave
 
 ```bash
+# Restaurar las versiones exactas de los paquetes (primera vez o tras cambios en renv.lock)
+Rscript -e 'renv::restore()'
+
+# Renderizar el cuaderno EDA a HTML autocontenido
 quarto render EDA_Inv_GRD_v1.qmd
+
+# Lanzar el dashboard Shiny
+Rscript -e 'shiny::runApp()'
+
+# Tests unitarios (sin Chrome)
+Rscript -e 'testthat::test_dir("tests/testthat", filter = "helpers|datos|exportar")'
+
+# Todos los tests (shinytest2 requiere Chrome/chromote)
+Rscript -e 'testthat::test_dir("tests/testthat")'
 ```
 
-El HTML resultante (`EDA_Inv_GRD_v1.html`) es autocontenido (`embed-resources: true`) y se puede compartir sin dependencias externas.
+---
 
-### 5. Ejecutar el dashboard Shiny
+## Datos
 
-Versión interactiva del cuaderno con filtros de tipología, departamento y estado. Comparte los mismos RDS de `midputs/rds/`.
+Tanto el cuaderno EDA como el dashboard leen los `.rds` ya preparados desde `midputs/rds/`. Si faltan, `descargar_si_falta()` los baja automáticamente desde Google Drive (archivos públicos, sin OAuth); los IDs viven en `DRIVE_IDS` (`R/datos.R`).
 
-```r
-shiny::runApp()
-```
+La preparación de datos es opcional y vive en `00_datos_entrada.qmd`, que trabaja en dos modos según el param `leer_desde_local`:
 
-Archivos: `app.R` (UI + server) y `global.R` (precarga y precómputo). Usa los mismos paquetes que ya están pinneados en `renv.lock` (incluido `shiny` y `bslib`), por lo que no se requieren instalaciones adicionales.
+- `TRUE` → **modo actualización**: descarga los crudos del MEF a `raw/`, los convierte a `.rds` y (opcionalmente) los sube a Drive.
+- `FALSE` → **modo consumo** (default): baja los `.rds` ya preparados desde Drive. No requiere OAuth.
 
 ---
 
-## Contenido del cuaderno
+## Dashboard Shiny
 
-| Sección | Descripción |
-|---|---|
-| **1. Configuración** | Variables del usuario y carga de paquetes |
-| **2. Adquisición de datos** | Descarga o lectura local de las tres fuentes |
-| **3. Descripción inicial** | `glimpse()` y `tabyl()` de las bases brutas |
-| **4. Depuración** | Filtro a GRD, selección de columnas, deduplicación geoespacial, cast de tipos |
-| **5. Fusión geoespacial** | Left join desde puntos ESRI → añade atributos tabulares (`df_pu_geoinv_inv_g_dpf`) |
-| **6. Fusión temporal** | Left join desde serie 2012-2025 → añade contexto presupuestario (`df_grd_2012_25_dpf`) |
-| **7. EDA** | `skimr::skim()`, inversión específica con gráfica acumulada interactiva y mini-mapa, diccionario actualizado, promedios por tipología, tabla de crecimientos porcentuales |
-| **8. Cierre** | `sessioninfo::session_info()` |
+Versión interactiva del cuaderno con filtros de tipología, departamento, situación y tipo de inversión. Comparte los mismos `.rds` de `midputs/rds/`.
 
-### Bases de datos producidas
+**Pestañas:** Resumen · Mapa · Distribuciones · Departamentos · Inversión Seleccionada · Ficha Técnica.
 
-| Objeto | Descripción |
-|---|---|
-| `df_det_inv_grd_dp` | Detalle MEF filtrado a GRD (32 columnas seleccionadas) |
-| `df_pu_geoinv_inv_g_dp` | Puntos ESRI depurados, un punto por `COD_UNICO` |
-| `df_pu_geoinv_inv_g_dpf` | Fusión geoespacial (puntos + atributos tabulares) |
-| `df_grd_2012_25_dp` | Serie temporal depurada (6 columnas) |
-| `df_grd_2012_25_dpf` | Fusión temporal (serie + contexto geoespacial, sin geometría) |
+- La lógica está extraída en funciones puras en `R/` (testeadas con `testthat` + `shinytest2`).
+- En el primer arranque, `global.R` ejecuta el pipeline completo y guarda una **caché** (`midputs/rds/_cache_app.rds`, no rastreada). Para forzar su reconstrucción: `GRD_REBUILD_CACHE=1 Rscript -e 'source("global.R")'`.
+- Exporta los datos filtrados a **CSV** (geo y temporal), **GeoPackage** y un **reporte PDF** por inversión (Typst vía `reporte_inversion.qmd`).
+- Desplegable en **Posit Connect** (`manifest.json`), donde la caché se reconstruye descargando desde Drive.
 
 ---
 
-## Consideraciones de memoria
+## Convenciones
 
-El CSV principal (~388 MB) se lee con `data.table::fread(..., select = c(...))` para cargar solo las 32 columnas necesarias y evitar un pico de ~2-3 GB en RAM. Inmediatamente después del filtro a GRD se ejecuta `rm(df_det_inv); gc()` para liberar el objeto completo.
-
----
-
-## Convenciones del proyecto
-
-- Sin notación científica: `options(scipen = 999)` en el chunk de setup.
-- Referencias a funciones siempre con `paquete::funcion()` cuando hay riesgo de ambigüedad.
-- Interpolación de strings con `glue::glue()`, nunca con `paste0`.
+- Idioma: toda la prosa, comentarios y nombres de variables en **español**.
+- Sin notación científica: `options(scipen = 999)`.
+- Namespacing explícito (`paquete::funcion()`) ante riesgo de ambigüedad.
+- Interpolación de strings con `glue::glue()`, nunca `paste0`.
 - Nombres de archivos en `snake_case`.
-- Los archivos de `folder_xyz_ignore/` son sensibles y no deben leerse ni modificarse.
-
----
-
-## Notas
-
-- **Tildes en `PROGRAMA`**: el filtro usa el literal `"GESTIÓN DE RIESGOS Y EMERGENCIAS"`. Si el MEF cambia la codificación del CSV, puede ser necesario aplicar `stringi::stri_trans_general` para normalizar antes de comparar.
-- **`pct_pim_vs_pia`**: mide el crecimiento del PIM respecto al PIA (`(PIM - PIA) / PIA × 100`). Un valor negativo indica que el presupuesto fue reducido durante la ejecución.
-- **Gráfica acumulada**: la serie de PIA/PIM/DEVENGADO por proyecto muestra valores acumulados (no anuales) para facilitar la lectura del crecimiento histórico total.
+- Identificadores clave (`CODIGO_UNICO`, `COD_UNICO`, `PRODUCTO_PROYECTO`) siempre como `character` para evitar coerciones silenciosas en los joins.
+- CSVs grandes con `data.table::fread(..., select = c(...))`; liberar objetos grandes con `rm(...); gc()` tras filtrar.

@@ -195,6 +195,7 @@ nombres_comunes <- tibble::tribble(
   "des_tipologia",            "Tipología",
   "nivel",                    "Nivel de Gobierno",
   "entidad",                  "Entidad",
+  "pliego_nombre",            "Pliego",
   "nombre_uep",               "UE Presup.",
   "nombre_inversion",         "Nombre inversión",
   "nombre_abreviado",         "Nombre abreviado",
@@ -243,6 +244,7 @@ definiciones_locales <- tibble::tribble(
   # "avance_ejecucion",     "Se refiere a las tareas y acciones que se desarrollan en los productos y componentes de la inversión en la Fase de Ejecución",
   "link_ssi",             "URL a la inversión en el SSI del MEF (capa ESRI).",
   "n_inversiones",        "Cantidad de inversiones correspondientes",
+  "pliego_nombre",            "Pliego presupuestal al que pertenece la Entidad",
   "avance_financiero",    "Avance Financiero. Corresponde al porcentaje de devengado acumulado, respecto del costo actualizado",
   "costo_actualizado_prom",   "Costo actualizado promedio",
   "monto_viable_prom",        "Monto viable promedio",
@@ -438,7 +440,7 @@ cat("df_pu_geoinv_inv_g dimensiones:", dim(df_pu_geoinv_inv_g), "\n")
 ```{r leer-grd-12-25}
 cols_grd_12_25 <- c(
   "PRODUCTO_PROYECTO", "PRODUCTO_PROYECTO_NOMBRE",
-  "ANIO", "PIA", "PIM", "DEVENGADO"
+  "ANIO", "PIA", "PIM", "DEVENGADO", "PLIEGO_NOMBRE"
 )
 cols_grd_12_25_lower <- janitor::make_clean_names(cols_grd_12_25)
 
@@ -636,9 +638,36 @@ cat(glue::glue(
 
 ## `df_grd_2012_25` → `df_grd_2012_25_dp`
 
+> **Nota sobre `pliego_nombre` (≈90% faltante).** El pliego presupuestal solo
+> existe en esta serie SIAF (ni el detalle MEF ni el GeoPackage lo traen) y se
+> adjunta a la base geoespacial vía el lookup `pliego_x_inv` (más abajo). Tras el
+> `left_join`, ~90% de las inversiones del universo común quedan con
+> `pliego_nombre = NA`. **No es un error del cruce**: el campo viene vacío en la
+> propia fuente (63.8% de filas; cae de ~52% poblado en 2012-2016 a ~29% desde
+> 2017). El vacío **no** se explica por falta de ejecución —inversiones con
+> PIA/PIM/devengado igual quedan sin pliego— y **no es recuperable**: la columna
+> de código `PLIEGO` está vacía exactamente en las mismas filas, así que no hay
+> mapeo código→nombre. `entidad` y `nombre_uep` (del detalle, 100% poblados) **no**
+> son sustituto: representan la unidad ejecutora (municipios/GORE), no el tenedor
+> del presupuesto (mayormente ministerios). Por eso el indicador se conserva tal
+> cual, asumiendo el vacío como límite de la fuente.
+
 ```{r depurar-grd-12-25}
 # Conservar todas las filas anuales de las inversiones del universo común.
 df_grd_2012_25_dp <- df_grd_2012_25[codigo_unico %in% codigos_grd_comunes]
+
+# Nombre del pliego del último año registrado por inversión. El pliego cambia
+# con el tiempo (reorganizaciones administrativas); fijamos el valor más
+# reciente con dato no vacío para cada CUI, de modo que sea un atributo único.
+pliego_x_inv <- df_grd_2012_25_dp[
+  !is.na(pliego_nombre) & pliego_nombre != "",
+  .SD[which.max(anio)], by = codigo_unico,
+  .SDcols = c("anio", "pliego_nombre")
+][, .(codigo_unico, pliego_nombre)]
+
+# La versión per-año ya no se necesita en la serie: el valor canónico viajará
+# por la base geoespacial. Se descarta para evitar choque de nombres en el join.
+df_grd_2012_25_dp[, pliego_nombre := NULL]
 
 cat(glue::glue(
   "df_grd_2012_25_dp: {nrow(df_grd_2012_25_dp)} filas ",
@@ -675,6 +704,11 @@ df_grd_2026_dp[is.na(devengado), devengado := 0]
 df_grd_serie_dp <- data.table::rbindlist(
   list(df_grd_2012_25_dp, df_grd_2026_dp), use.names = TRUE, fill = TRUE
 )
+
+# Adjuntar el pliego (último año) a la base geoespacial ANTES del merge
+# temporal, para que la columna viaje a df_grd_2012_25_dpf vía el inner_join.
+df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
+  dplyr::left_join(pliego_x_inv, by = "codigo_unico")
 
 df_grd_2012_25_dpf <- df_grd_serie_dp |>
   dplyr::inner_join(
