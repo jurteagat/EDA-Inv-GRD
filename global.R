@@ -199,13 +199,18 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
 
   # avance_financiero = devengado acumulado / costo actualizado * 100.
   # Si el costo actualizado es 0 o NA, queda NA (evita 0/0 e Inf).
+  # El devengado acumulado va hasta 2026: la serie SIAF cubre 2012-2025 y se le
+  # suma dev_anio_actual (devengado del año en curso, 2026) para que el
+  # indicador sea consistente con las tablas top-10 y el resto del app.
   df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
     dplyr::left_join(deveng_acum_x_inv, by = "codigo_unico") |>
     dplyr::mutate(
+      devengado_acum = dplyr::coalesce(devengado_acum, 0) +
+                       dplyr::coalesce(as.numeric(dev_anio_actual), 0),
       avance_financiero = dplyr::if_else(
         is.na(as.numeric(costo_actualizado)) | as.numeric(costo_actualizado) == 0,
         NA_real_,
-        dplyr::coalesce(devengado_acum, 0) / as.numeric(costo_actualizado) * 100
+        devengado_acum / as.numeric(costo_actualizado) * 100
       )
     )
 
@@ -283,12 +288,16 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   # Diccionario oficial (opcional)
   definiciones_locales <- tibble::tribble(
     ~variable,              ~definicion_local,
+    # Edita aquí la definición de codigo_unico: este override tiene prioridad
+    # sobre la del diccionario oficial del MEF (diccionario.rds).
+    "codigo_unico",         "Código Único de Inversión (CUI) en el marco del Invierte.pe.",
     "codigo_pro",           "Código interno del programa de inversiones (GeoInvierte).",
     "link_ssi",             "URL a la inversión en el SSI del MEF (GeoInvierte.",
     # "des_servicio",         "Descripción del servicio público asociado (GeoInvierte).",
     "avance_financiero",    "Avance Financiero. Corresponde al porcentaje de devengado acumulado, respecto del costo actualizado",
     # "des_tipologia_esri",   "Tipología según la capa GeoInvierte puede diferir de des_tipologia del diccionario MEF.",
-    "geometry",             "Geometría (POINT) en WGS84 con la ubicación del proyecto.",
+    # La columna de geometría del objeto sf se llama "geom" (no "geometry").
+    "geom",                 "Geometría (POINT) en WGS84 con la ubicación del proyecto.",
     "nombre_abreviado",     "Nombre abreviado generado con inteligencia artificial a partir del nombre completo de la inversión.",
     "devengado_acum",           "Devengado acumulado periodo 2012-2026",
     "pliego_nombre",        "Pliego presupuestal al que pertenece la Entidad (~90% faltante en la fuente SIAF)."

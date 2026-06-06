@@ -81,7 +81,7 @@ ui <- bslib::page_navbar(
       multiple = TRUE,
       options  = list(placeholder = "Todos los tipos")
     ),
-    shiny::actionButton("recalcular", "Recalcular",
+    shiny::actionButton("recalcular", "Procesar",
                         icon  = shiny::icon("arrows-rotate"),
                         class = "btn-primary btn-sm w-100"),
     shiny::actionButton("reset", "Limpiar filtros",
@@ -92,7 +92,7 @@ ui <- bslib::page_navbar(
     htmltools::tags$small(
       htmltools::tags$em(
         "Filtros activos en Resumen, Mapa, Distribuciones ",
-        "y Departamentos al presionar Recalcular. "
+        "y Departamentos al presionar Procesar. "
       ),
       style = "color:#777;"
     ),
@@ -242,64 +242,110 @@ ui <- bslib::page_navbar(
     bslib::layout_columns(
       col_widths = 12,
       bslib::card(
-        max_height = "220px",
-        bslib::card_header("Fuentes de datos"),
+        bslib::card_header("Acerca del proyecto"),
         bslib::card_body(
-          if (!is.null(fechas_fuentes) && "fecha_dato" %in% names(fechas_fuentes)) {
-            DT::DTOutput("tbl_fechas_fuentes")
-          } else {
-            htmltools::p(
-              htmltools::em(
-                "Fecha de datos no disponible. ",
-                "Ejecuta 00_datos_entrada.qmd para generarla."
-              )
+          htmltools::p(
+            htmltools::strong("EDA de Inversiones GRD — Perú."),
+            " Proyecto en R y Quarto para la depuración y el análisis ",
+            "exploratorio de datos (EDA) de las inversiones de Gestión de ",
+            "Riesgos y Emergencias (GRD) en el marco del Invierte.pe del ",
+            "Ministerio de Economía y Finanzas (MEF) del Perú. Tiene propósito ",
+            "educativo: cada paso del procesamiento está comentado y explicado. ",
+            "Combina tres fuentes grandes del MEF: el detalle de inversiones ",
+            "(~388 MB), los puntos georreferenciados (~265 MB) y la serie de ",
+            "ejecución presupuestal 2012-2025 (~266 MB). El proyecto ofrece dos ",
+            "productos complementarios que comparten el mismo pipeline y los ",
+            "mismos datos preparados: un cuaderno Quarto que se renderiza a HTML ",
+            "autocontenido, y este dashboard Shiny interactivo con filtros ",
+            "dinámicos, mapas, distribuciones, exportaciones (CSV/GeoPackage) y ",
+            "generación de reportes PDF por inversión. Las cifras monetarias ",
+            "están en soles e incluyen ejecución hasta el año en curso (2026). ",
+            "El objetivo es facilitar el análisis transparente y reproducible de ",
+            "cómo se asignan y ejecutan los recursos públicos destinados a ",
+            "reducir el riesgo de desastres en el Perú."
+          ),
+          htmltools::tags$ul(
+            style = "margin-bottom:0;",
+            htmltools::tags$li(
+              htmltools::tags$small(htmltools::tags$em(
+                "Algunas de las inversiones listadas consignan tipologías que ",
+                "ya no están vigentes, pero que se entiende estuvieron vigentes ",
+                "en el momento de su registro."
+              ))
+            ),
+            htmltools::tags$li(
+              htmltools::tags$small(htmltools::tags$em(
+                "Los nombres abreviados de inversiones han sido autogenerados ",
+                "con inteligencia artificial, pueden contener imprecisiones."
+              ))
             )
-          }
+          )
         )
-      )
-    ),
-    bslib::layout_columns(
-      col_widths = 12,
-      card_widget(
-        "Diccionario de variables",
-        DT::DTOutput("tbl_diccionario")
       )
     ),
     bslib::layout_columns(
       col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
-      bslib::card(
-        bslib::card_header("Base geoespacial (filtrada)"),
-        bslib::card_body(
-          htmltools::div(
-            style = "display:flex; align-items:center; gap:12px;",
-            htmltools::p(
-              "GeoPackage (",
-              htmltools::code(".gpkg"),
-              ") con todos los atributos de la inversión y la geometría",
-              "POINT en WGS84. Respeta los filtros activos.",
-              style = "margin:0; flex:1;"
-            ),
-            shiny::downloadButton("dl_gpkg_geo", "GPKG geoespacial",
-                                  icon  = shiny::icon("download"),
-                                  class = "btn-primary btn-sm")
+      # Columna izquierda: fuentes de datos + descargas (geoespacial y temporal)
+      htmltools::div(
+        class = "d-flex flex-column gap-3",
+        bslib::card(
+          fill = FALSE,
+          bslib::card_header("Fuentes de datos"),
+          bslib::card_body(
+            fillable = FALSE,
+            if (!is.null(fechas_fuentes) && "fecha_dato" %in% names(fechas_fuentes)) {
+              DT::DTOutput("tbl_fechas_fuentes", fill = FALSE)
+            } else {
+              htmltools::p(
+                htmltools::em(
+                  "Fecha de datos no disponible. ",
+                  "Ejecuta 00_datos_entrada.qmd para generarla."
+                )
+              )
+            }
+          )
+        ),
+        bslib::card(
+          fill = FALSE,
+          bslib::card_header("Base geoespacial (filtrada)"),
+          bslib::card_body(
+            htmltools::div(
+              style = "display:flex; align-items:center; gap:12px;",
+              htmltools::p(
+                "GeoPackage (",
+                htmltools::code(".gpkg"),
+                ") con todos los atributos de la inversión y la geometría",
+                "POINT en WGS84. Respeta los filtros activos.",
+                style = "margin:0; flex:1;"
+              ),
+              shiny::downloadButton("dl_gpkg_geo", "GPKG geoespacial",
+                                    icon  = shiny::icon("download"),
+                                    class = "btn-primary btn-sm")
+            )
+          )
+        ),
+        bslib::card(
+          fill = FALSE,
+          bslib::card_header("Base temporal (filtrada)"),
+          bslib::card_body(
+            htmltools::div(
+              style = "display:flex; align-items:center; gap:12px;",
+              htmltools::p(
+                "Serie 2012-2025 de PIA/PIM/Devengado por inversión.",
+                "Filtrada a los códigos activos según filtros globales.",
+                style = "margin:0; flex:1;"
+              ),
+              shiny::downloadButton("dl_csv_temporal", "CSV temporal",
+                                    icon  = shiny::icon("download"),
+                                    class = "btn-success btn-sm")
+            )
           )
         )
       ),
-      bslib::card(
-        bslib::card_header("Base temporal (filtrada)"),
-        bslib::card_body(
-          htmltools::div(
-            style = "display:flex; align-items:center; gap:12px;",
-            htmltools::p(
-              "Serie 2012-2025 de PIA/PIM/Devengado por inversión.",
-              "Filtrada a los códigos activos según filtros globales.",
-              style = "margin:0; flex:1;"
-            ),
-            shiny::downloadButton("dl_csv_temporal", "CSV temporal",
-                                  icon  = shiny::icon("download"),
-                                  class = "btn-success btn-sm")
-          )
-        )
+      # Columna derecha: diccionario de variables
+      card_widget(
+        "Diccionario de variables",
+        DT::DTOutput("tbl_diccionario")
       )
     )
   ),
@@ -423,8 +469,18 @@ server <- function(input, output, session) {
   output$tbl_top_entidades <- DT::renderDT({
     s <- serie_filt()
     shiny::validate(shiny::need(nrow(s) > 0, "Sin datos."))
-    top <- data.table::as.data.table(s)[
-      , .(devengado_acum = sum(devengado, na.rm = TRUE)), by = nombre_uep
+    # Devengado acumulado 2012-2026: la serie SIAF cubre 2012-2025 (filas por
+    # año) y el devengado 2026 vive en dev_anio_actual (atributo único por
+    # inversión, repetido en cada fila-año). Colapsamos primero por codigo_unico
+    # para no multiplicar dev_anio_actual, luego agregamos por UEP.
+    por_cui <- data.table::as.data.table(s)[
+      , .(dev = sum(devengado, na.rm = TRUE) +
+                dplyr::coalesce(data.table::first(dev_anio_actual), 0),
+          nombre_uep = data.table::first(nombre_uep)),
+      by = codigo_unico
+    ]
+    top <- por_cui[
+      , .(devengado_acum = sum(dev, na.rm = TRUE)), by = nombre_uep
     ][order(-devengado_acum)][seq_len(min(10, .N))]
     DT::datatable(dplyr::rename_with(top, label_var),
                   rownames = FALSE,
@@ -645,7 +701,8 @@ server <- function(input, output, session) {
       dplyr::filter(!is.na(limite_outlier), !is.na(pct_costo_vs_viable),
                     pct_costo_vs_viable > limite_outlier) |>
       dplyr::select(codigo_unico, nombre_abreviado, entidad,
-                    des_tipologia, costo_actualizado, pct_costo_vs_viable) |>
+                    des_tipologia, monto_viable, costo_actualizado,
+                    pct_costo_vs_viable) |>
       dplyr::arrange(dplyr::desc(pct_costo_vs_viable))
 
     shiny::validate(shiny::need(nrow(df_out) > 0,
@@ -656,7 +713,8 @@ server <- function(input, output, session) {
       rownames = FALSE, filter = "top",
       options  = list(pageLength = 10, scrollX = TRUE)
     ) |>
-      DT::formatRound(label_var("costo_actualizado"),   digits = 0, mark = ",") |>
+      DT::formatRound(label_var(c("monto_viable", "costo_actualizado")),
+                      digits = 0, mark = ",") |>
       DT::formatRound(label_var("pct_costo_vs_viable"), digits = 1)
   })
 

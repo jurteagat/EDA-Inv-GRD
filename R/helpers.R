@@ -47,16 +47,17 @@ nombres_comunes <- tibble::tribble(
   "n_proyectos",              "N° inversiones",
   "costo_actualizado_prom",   "Costo Actual. (prom.)",
   "monto_viable_prom",        "Monto viable (prom.)",
-  "pct_costo_vs_viable",      "% Costo vs. viable",
+  "pct_costo_vs_viable",      "Var. % Costo Actual. vs Monto V.",
   "pct_pim_vs_pia",           "% PIM vs. PIA",
   "departamento",             "Departamento",
   "pct_ejecucion",            "% Ejecución (Deveng./PIM)",
   "pct_pim_pia",              "% PIM vs. PIA (portafolio)",
-  "devengado_acum",           "Deveng. acum. 2012-2025",
+  "devengado_acum",           "Deveng. acum. 2012-2026",
   "costo_total",              "Costo Actual. (S/)",
   "n_inversiones",            "N° inversiones",
   "dev_anio_actual",          "Devengado A.Actual",
-  "pct_ejecucion_prom",       "% Av. financiero prom."
+  "pct_ejecucion_prom",       "% Av. financiero prom.",
+  "geom",                     "Geometría"
 )
 
 label_var <- function(vars) {
