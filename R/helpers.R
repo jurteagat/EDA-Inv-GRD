@@ -15,6 +15,7 @@ nombres_comunes <- tibble::tribble(
   "des_tipologia",            "Tipología",
   "nivel",                    "Nivel",
   "entidad",                  "Entidad",
+  "pliego_nombre",            "Pliego",
   "nombre_uep",               "UE Presup.",
   "nombre_inversion",         "Nombre inversión",
   "nombre_abreviado",         "Nombre abreviado",

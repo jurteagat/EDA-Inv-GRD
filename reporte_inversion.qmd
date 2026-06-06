@@ -41,7 +41,7 @@ serie <- datos$serie
 ```{r tabla-atributos, echo=FALSE}
 vars_mostrar <- c(
   "codigo_unico", "nombre_inversion", "nombre_abreviado",
-  "des_tipologia", "entidad", "nivel", "estado", "situacion",
+  "des_tipologia", "entidad", "pliego_nombre", "nivel", "estado", "situacion",
   "monto_viable", "costo_actualizado", "avance_fisico", "avance_financiero",
   "pia_anio_actual", "pim_anio_actual", "deven_acumul_anio_ant",
   "ubigeo", "fec_ini_ejecucion", "num_habitantes_benef",

@@ -121,7 +121,7 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   })
 
   cols_grd_12_25       <- c("PRODUCTO_PROYECTO", "PRODUCTO_PROYECTO_NOMBRE",
-                             "ANIO", "PIA", "PIM", "DEVENGADO")
+                             "ANIO", "PIA", "PIM", "DEVENGADO", "PLIEGO_NOMBRE")
   cols_grd_12_25_lower <- janitor::make_clean_names(cols_grd_12_25)
 
   df_grd_2012_25 <- data.table::as.data.table(readRDS(ruta_rds("grd_2012_25.rds")))
@@ -177,6 +177,18 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   df_grd_2012_25_dp <- df_grd_2012_25[codigo_unico %in% codigos_grd_comunes]
   rm(df_grd_2012_25); invisible(gc())
 
+  # Pliego del último año con dato no vacío por inversión. El pliego solo existe
+  # en esta serie SIAF y cambia con el tiempo (reorganizaciones); fijamos el
+  # valor más reciente como atributo único que viajará por la base geoespacial.
+  pliego_x_inv <- df_grd_2012_25_dp[
+    !is.na(pliego_nombre) & pliego_nombre != "",
+    .SD[which.max(anio)], by = codigo_unico,
+    .SDcols = c("anio", "pliego_nombre")
+  ][, .(codigo_unico, pliego_nombre)]
+
+  # La versión per-año se descarta para evitar choque de nombres en el join.
+  df_grd_2012_25_dp[, pliego_nombre := NULL]
+
   # Devengado acumulado por inversión (misma definición canónica que las tablas
   # top-10). Se calcula una vez y se une a la base geoespacial para derivar
   # avance_financiero, de modo que el indicador sea consistente en todo el app.
@@ -196,6 +208,11 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
         dplyr::coalesce(devengado_acum, 0) / as.numeric(costo_actualizado) * 100
       )
     )
+
+  # Adjuntar el pliego (último año) a la base geoespacial ANTES del merge
+  # temporal, para que la columna viaje a df_grd_2012_25_dpf vía el inner_join.
+  df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
+    dplyr::left_join(pliego_x_inv, by = "codigo_unico")
 
   df_grd_2012_25_dpf <- df_grd_2012_25_dp |>
     dplyr::inner_join(
@@ -271,7 +288,8 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     "des_servicio",         "Descripción del servicio público asociado (capa ESRI).",
     "des_tipologia_esri",   "Tipología según la capa ESRI; puede diferir de des_tipologia del diccionario MEF.",
     "geometry",             "Geometría (POINT) en WGS84 con la ubicación del proyecto.",
-    "nombre_abreviado",     "Nombre abreviado curado (coalesce de nom_inv_corto + nombre_inversion)."
+    "nombre_abreviado",     "Nombre abreviado curado (coalesce de nom_inv_corto + nombre_inversion).",
+    "pliego_nombre",        "Pliego presupuestal al que pertenece la Entidad (~90% faltante en la fuente SIAF)."
   )
 
   ruta_dicc    <- ruta_rds("diccionario.rds")
