@@ -283,12 +283,14 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   # Diccionario oficial (opcional)
   definiciones_locales <- tibble::tribble(
     ~variable,              ~definicion_local,
-    "codigo_pro",           "Código interno del programa de inversiones (capa ESRI).",
-    "link_ssi",             "URL a la inversión en el SSI del MEF (capa ESRI).",
-    "des_servicio",         "Descripción del servicio público asociado (capa ESRI).",
-    "des_tipologia_esri",   "Tipología según la capa ESRI; puede diferir de des_tipologia del diccionario MEF.",
+    "codigo_pro",           "Código interno del programa de inversiones (GeoInvierte).",
+    "link_ssi",             "URL a la inversión en el SSI del MEF (GeoInvierte.",
+    # "des_servicio",         "Descripción del servicio público asociado (GeoInvierte).",
+    "avance_financiero",    "Avance Financiero. Corresponde al porcentaje de devengado acumulado, respecto del costo actualizado",
+    # "des_tipologia_esri",   "Tipología según la capa GeoInvierte puede diferir de des_tipologia del diccionario MEF.",
     "geometry",             "Geometría (POINT) en WGS84 con la ubicación del proyecto.",
-    "nombre_abreviado",     "Nombre abreviado curado (coalesce de nom_inv_corto + nombre_inversion).",
+    "nombre_abreviado",     "Nombre abreviado generado con inteligencia artificial a partir del nombre completo de la inversión.",
+    "devengado_acum",           "Devengado acumulado periodo 2012-2026",
     "pliego_nombre",        "Pliego presupuestal al que pertenece la Entidad (~90% faltante en la fuente SIAF)."
   )
 

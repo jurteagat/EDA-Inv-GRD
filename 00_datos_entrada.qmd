@@ -509,8 +509,8 @@ if (isTRUE(params$leer_desde_local)) {
   }
 
   fechas_fuentes <- data.table::data.table(
-    fuente          = c("MEF — Detalle Inversiones", "MEF — Diccionario",
-                        "MEF — GeoInversiones (ESRI)", "MEF — Ejecución 2012-2025"),
+    fuente          = c("MEF Datos abiertos - Detalle Inversiones", "MEF Datos abiertos - Detalle Inversiones — Diccionario",
+                        "MEF GeoInvierte - Inversiones (puntos)", "MEF Datos Abiertos - Presupuesto Público 2012-2025"),
     archivo         = c(basename(ruta_det_inv), basename(ruta_diccionario),
                         basename(ruta_gpkg),    basename(ruta_grd_12_25)),
     fecha_dato      = c(fecha_iso(ruta_det_inv), fecha_iso(ruta_diccionario),

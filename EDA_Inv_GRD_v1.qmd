@@ -217,7 +217,7 @@ nombres_comunes <- tibble::tribble(
   "dev_anio_actual",          "Devengado actual",
   # "saldo_ejecutar",           "Saldo a ejecutar",
   "tiene_f12b",               "F-12B",
-  "avance_fisico",            "Av. físico",
+  "avance_fisico",            "% Av. físico",
   # "avance_ejecucion",         "Av. ejecución",
   "ind_ioarr_emerg",          "IOARR Emergencia",
   "ubigeo",                   "Ubigeo",

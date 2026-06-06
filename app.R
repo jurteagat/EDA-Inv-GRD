@@ -92,8 +92,7 @@ ui <- bslib::page_navbar(
     htmltools::tags$small(
       htmltools::tags$em(
         "Filtros activos en Resumen, Mapa, Distribuciones ",
-        "y Departamentos al presionar Recalcular. ",
-        "Inversión Seleccionada usa el universo completo."
+        "y Departamentos al presionar Recalcular. "
       ),
       style = "color:#777;"
     ),
@@ -742,7 +741,7 @@ server <- function(input, output, session) {
           glue::glue(
             "<b>{departamento}</b><br>",
             "N° inversiones: {scales::comma(n_inversiones)}<br>",
-            "Costo total: S/ {scales::label_comma()(costo_total)}<br>",
+            "Costo Actual: S/ {scales::label_comma()(costo_total)}<br>",
             "Av. financiero prom.: {round(pct_ejecucion_prom, 1)}%"
           ),
           "Sin inversiones en este departamento"

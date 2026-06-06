@@ -11,7 +11,7 @@ nombres_comunes <- tibble::tribble(
   "des_tipologia_esri",       "Tipología (ESRI)",
   "geometry",                 "Geometría",
   "monto_viable",             "Monto viable",
-  "costo_actualizado",        "Costo actual.",
+  "costo_actualizado",        "Costo Actual.",
   "des_tipologia",            "Tipología",
   "nivel",                    "Nivel",
   "entidad",                  "Entidad",
@@ -36,7 +36,7 @@ nombres_comunes <- tibble::tribble(
   "pim_anio_actual",          "PIM actual",
   "saldo_ejecutar",           "Saldo ejec.",
   "tiene_f12b",               "Tiene F-12B",
-  "avance_fisico",            "Av. físico",
+  "avance_fisico",            "% Av. físico",
   "avance_financiero",        "Av. Financiero",
   "ind_ioarr_emerg",          "IOARR/Emerg.",
   "ubigeo",                   "Ubigeo",
@@ -45,7 +45,7 @@ nombres_comunes <- tibble::tribble(
   "num_habitantes_benef",     "Hab. benef.",
   "monto_et_f8",              "Monto ET/F8",
   "n_proyectos",              "N° inversiones",
-  "costo_actualizado_prom",   "Costo actual. (prom.)",
+  "costo_actualizado_prom",   "Costo Actual. (prom.)",
   "monto_viable_prom",        "Monto viable (prom.)",
   "pct_costo_vs_viable",      "% Costo vs. viable",
   "pct_pim_vs_pia",           "% PIM vs. PIA",
@@ -53,8 +53,9 @@ nombres_comunes <- tibble::tribble(
   "pct_ejecucion",            "% Ejecución (Deveng./PIM)",
   "pct_pim_pia",              "% PIM vs. PIA (portafolio)",
   "devengado_acum",           "Deveng. acum. 2012-2025",
-  "costo_total",              "Costo total (S/)",
+  "costo_total",              "Costo Actual. (S/)",
   "n_inversiones",            "N° inversiones",
+  "dev_anio_actual",          "Devengado A.Actual",
   "pct_ejecucion_prom",       "% Av. financiero prom."
 )
 
