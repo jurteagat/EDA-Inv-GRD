@@ -136,16 +136,51 @@ preparar_deptos_geo <- function(ruta_descarga, ruta_rds) {
   invisible(sf_final)
 }
 
+#' Selecciona las inversiones GRD del detalle MEF.
+#'
+#' Incluye las del programa objetivo (GESTIÓN DE RIESGOS Y EMERGENCIAS), las de
+#' tipología de drenaje pluvial (servicio/sistema) y las que tienen indicador de
+#' emergencia (`ind_ioarr_emerg == "SI"`), sin importar el programa o tipología.
+#' Excluye **siempre** las del subprograma de defensa contra incendios y
+#' emergencias menores: la exclusión prevalece sobre cualquier criterio de
+#' inclusión. Todas las comparaciones de texto se normalizan (Latin-ASCII +
+#' mayúsculas) porque las tildes y mayúsculas del CSV MEF varían.
+filtrar_det_grd <- function(det_inv_dt,
+                            programa_objetivo = "GESTION DE RIESGOS Y EMERGENCIAS") {
+  norm <- function(x) stringi::stri_trans_general(as.character(x), "Latin-ASCII")
+  eq   <- function(x, valor) !is.na(x) & x == valor
+
+  tipologias_drenaje  <- c("SERVICIO DE DRENAJE PLUVIAL", "SISTEMA DE DRENAJE PLUVIAL")
+  subprograma_excluir <- "DEFENSA CONTRA INCENDIOS Y EMERGENCIAS MENORES"
+
+  programa_n    <- norm(det_inv_dt$programa)
+  tipologia_n   <- norm(det_inv_dt$des_tipologia)
+  subprograma_n <- norm(det_inv_dt$subprograma)
+  ioarr_n       <- toupper(trimws(as.character(det_inv_dt$ind_ioarr_emerg)))
+
+  incluir <- eq(programa_n, programa_objetivo) |
+             tipologia_n %in% tipologias_drenaje |
+             eq(ioarr_n, "SI")
+  excluir <- eq(subprograma_n, subprograma_excluir)
+
+  det_inv_dt[incluir & !excluir]
+}
+
 #' Construye el universo de códigos GRD comunes a las tres fuentes.
 construir_universo_comun <- function(det_inv_dt, geoinv_sf, grd_ts_dt,
                                      programa_objetivo = "GESTION DE RIESGOS Y EMERGENCIAS") {
   codigos_det <- unique(as.character(
-    det_inv_dt[
-      stringi::stri_trans_general(programa, "Latin-ASCII") == programa_objetivo,
-      codigo_unico
-    ]
+    filtrar_det_grd(det_inv_dt, programa_objetivo)$codigo_unico
   ))
   codigos_geo <- unique(as.character(geoinv_sf$codigo_unico))
   codigos_ts  <- unique(as.character(grd_ts_dt[["codigo_unico"]]))
-  base::Reduce(intersect, list(codigos_det, codigos_geo, codigos_ts))
+  # La serie SIAF solo llega hasta 2025. Los CUIs del detalle que pasan el filtro
+  # se completan con una fila 2026 (ver pipeline en global.R / cuaderno EDA), así
+  # que su presencia temporal se garantiza por unión: no se excluyen por carecer
+  # de historia 2012-2025. El universo queda, en la práctica, det ∩ geo.
+  codigos_ts_ext <- base::union(codigos_ts, codigos_det)
+  universo <- base::Reduce(intersect, list(codigos_det, codigos_geo, codigos_ts_ext))
+  # Descarta CUIs vacíos/NA: un registro sin código no debe propagarse a filtros,
+  # tablas ni buscador.
+  universo[!is.na(universo) & nzchar(trimws(universo))]
 }

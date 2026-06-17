@@ -2,7 +2,7 @@
 
 Cuaderno Quarto de R y dashboard Shiny para el **análisis exploratorio de datos (EDA)** de las inversiones del programa - división funcional de *Gestión de Riesgos y Emergencias* (GRD) en el marco del Invierte.pe del Ministerio de Economía y Finanzas (MEF) del Perú.
 
-El proyecto combina tres fuentes grandes del MEF: el detalle de inversiones (CSV ~388 MB), los puntos georreferenciados (GeoPackage ~265 MB) y la serie de ejecución presupuestal 2012-2025 (CSV ~266 MB).
+El proyecto combina tres fuentes grandes del MEF: el detalle de inversiones (CSV ~388 MB), los puntos georreferenciados (GeoPackage ~265 MB) y la serie de ejecución presupuestal 2012-2025 (CSV ~266 MB), extendida a 2026 con el devengado del año en curso proveniente del detalle de inversiones.
 
 ---
 
@@ -24,10 +24,10 @@ EDA-Inv-GRD/
 ├── raw/                    # Crudos del MEF (no editar, no rastreados)
 ├── manifest.json           # Despliegue en Posit Connect
 ├── renv/ · renv.lock       # Entorno reproducible (R 4.5.3)
-└── CLAUDE.md               # Guía detallada del proyecto
+└── CLAUDE.md               # Guía detallada del proyecto (local, no rastreada)
 ```
 
-> Para el detalle completo de arquitectura, convenciones y pipeline, ver **`CLAUDE.md`**.
+> Para el detalle completo de arquitectura, convenciones y pipeline, ver **`CLAUDE.md`** (documento local de desarrollo, no incluido en el repositorio).
 
 ---
 

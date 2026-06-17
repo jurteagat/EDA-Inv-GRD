@@ -134,12 +134,10 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   codigos_grd_comunes <- construir_universo_comun(df_det_inv, df_pu_geoinv_inv_g,
                                                    df_grd_2012_25)
 
-  # Depuración
-  programa_objetivo <- "GESTION DE RIESGOS Y EMERGENCIAS"
-
-  df_det_inv_grd <- df_det_inv[
-    stringi::stri_trans_general(programa, "Latin-ASCII") == programa_objetivo
-  ]
+  # Depuración. Selección GRD: programa objetivo + drenaje pluvial +
+  # ind_ioarr_emerg == "SI", excluyendo el subprograma de incendios (ver
+  # filtrar_det_grd en R/datos.R, fuente única compartida con el cuaderno EDA).
+  df_det_inv_grd <- filtrar_det_grd(df_det_inv)
   rm(df_det_inv); invisible(gc())
 
   df_det_inv_grd_dp <- df_det_inv_grd[codigo_unico %in% codigos_grd_comunes]
@@ -189,24 +187,39 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   # La versión per-año se descarta para evitar choque de nombres en el join.
   df_grd_2012_25_dp[, pliego_nombre := NULL]
 
-  # Devengado acumulado por inversión (misma definición canónica que las tablas
-  # top-10). Se calcula una vez y se une a la base geoespacial para derivar
-  # avance_financiero, de modo que el indicador sea consistente en todo el app.
-  deveng_acum_x_inv <- df_grd_2012_25_dp |>
+  # Fila 2026 (año en curso) desde el detalle: PIA/PIM/devengado del año actual a
+  # nivel de inversión. Extiende la serie SIAF 2012-2025 al año en curso y permite
+  # conservar CUIs que aún no tienen historia 2012-2025. df_det_inv_grd_dp ya no es
+  # data.table (pasó por join_nombres_abreviados), por eso se usa dplyr::transmute.
+  df_grd_2026_dp <- df_det_inv_grd_dp |>
+    dplyr::transmute(
+      codigo_unico,
+      producto_proyecto_nombre = NA_character_,
+      anio      = 2026L,
+      pia       = as.numeric(pia_anio_actual),
+      pim       = as.numeric(pim_anio_actual),
+      devengado = dplyr::coalesce(as.numeric(dev_anio_actual), 0)
+    )
+
+  # Serie 2012-2026: filas históricas (SIAF) + fila 2026 (detalle).
+  df_grd_serie_dp <- data.table::rbindlist(
+    list(df_grd_2012_25_dp, df_grd_2026_dp), use.names = TRUE, fill = TRUE
+  )
+
+  # Devengado acumulado 2012-2026 por inversión (misma definición canónica que las
+  # tablas top-10): suma directa sobre la serie, que ya incluye la fila 2026. Se
+  # une a la base geoespacial para derivar avance_financiero de forma consistente.
+  deveng_acum_x_inv <- df_grd_serie_dp |>
     dplyr::group_by(codigo_unico) |>
     dplyr::summarise(devengado_acum = sum(devengado, na.rm = TRUE),
                      .groups = "drop")
 
-  # avance_financiero = devengado acumulado / costo actualizado * 100.
+  # avance_financiero = devengado acumulado 2012-2026 / costo actualizado * 100.
   # Si el costo actualizado es 0 o NA, queda NA (evita 0/0 e Inf).
-  # El devengado acumulado va hasta 2026: la serie SIAF cubre 2012-2025 y se le
-  # suma dev_anio_actual (devengado del año en curso, 2026) para que el
-  # indicador sea consistente con las tablas top-10 y el resto del app.
   df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
     dplyr::left_join(deveng_acum_x_inv, by = "codigo_unico") |>
     dplyr::mutate(
-      devengado_acum = dplyr::coalesce(devengado_acum, 0) +
-                       dplyr::coalesce(as.numeric(dev_anio_actual), 0),
+      devengado_acum = dplyr::coalesce(devengado_acum, 0),
       avance_financiero = dplyr::if_else(
         is.na(as.numeric(costo_actualizado)) | as.numeric(costo_actualizado) == 0,
         NA_real_,
@@ -219,7 +232,9 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   df_pu_geoinv_inv_g_dpf <- df_pu_geoinv_inv_g_dpf |>
     dplyr::left_join(pliego_x_inv, by = "codigo_unico")
 
-  df_grd_2012_25_dpf <- df_grd_2012_25_dp |>
+  # La serie fusionada (2012-2026) conserva el nombre df_grd_2012_25_dpf por
+  # compatibilidad con el resto del app.
+  df_grd_2012_25_dpf <- df_grd_serie_dp |>
     dplyr::inner_join(
       sf::st_drop_geometry(df_pu_geoinv_inv_g_dpf),
       by = "codigo_unico"

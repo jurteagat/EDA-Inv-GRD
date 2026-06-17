@@ -524,13 +524,27 @@ en las otras dos.
 ```{r identificar-universo-grd}
 programa_objetivo <- "GESTION DE RIESGOS Y EMERGENCIAS"
 
-# 1. Códigos GRD en df_det_inv (filtro por programa, sin crear objeto completo).
-codigos_grd_det <- unique(as.character(
-  df_det_inv[
-    stringi::stri_trans_general(programa, "Latin-ASCII") == programa_objetivo,
-    codigo_unico
-  ]
-))
+# Selección GRD sobre el detalle MEF. Además del programa objetivo, se incluyen
+# las inversiones de drenaje pluvial (servicio/sistema) y las que tienen
+# indicador de emergencia (ind_ioarr_emerg == "SI"), sin importar el programa o
+# la tipología. Se excluyen SIEMPRE las del subprograma de defensa contra
+# incendios y emergencias menores (la exclusión prevalece sobre la inclusión).
+# El texto se normaliza con stringi::stri_trans_general porque las tildes y
+# mayúsculas del CSV MEF varían.
+norm_txt <- function(x) stringi::stri_trans_general(as.character(x), "Latin-ASCII")
+eq_txt   <- function(x, valor) !is.na(x) & x == valor
+
+tipologias_drenaje  <- c("SERVICIO DE DRENAJE PLUVIAL", "SISTEMA DE DRENAJE PLUVIAL")
+subprograma_excluir <- "DEFENSA CONTRA INCENDIOS Y EMERGENCIAS MENORES"
+
+incluir_grd <- eq_txt(norm_txt(df_det_inv$programa), programa_objetivo) |
+  norm_txt(df_det_inv$des_tipologia) %in% tipologias_drenaje |
+  eq_txt(toupper(trimws(as.character(df_det_inv$ind_ioarr_emerg))), "SI")
+excluir_grd <- eq_txt(norm_txt(df_det_inv$subprograma), subprograma_excluir)
+
+# 1. Detalle GRD filtrado (se conserva para el siguiente paso de depuración).
+df_det_inv_grd <- df_det_inv[incluir_grd & !excluir_grd]
+codigos_grd_det <- unique(as.character(df_det_inv_grd$codigo_unico))
 
 # 2. Códigos únicos en df_pu_geoinv_inv_g (puede tener múltiples puntos por código).
 codigos_grd_geo <- unique(as.character(df_pu_geoinv_inv_g$codigo_unico))
@@ -538,10 +552,14 @@ codigos_grd_geo <- unique(as.character(df_pu_geoinv_inv_g$codigo_unico))
 # 3. Códigos únicos en df_grd_2012_25 (una fila por año por código).
 codigos_grd_ts <- unique(as.character(df_grd_2012_25[["codigo_unico"]]))
 
-# 4. Intersección de los tres conjuntos.
+# 4. Intersección de los tres conjuntos. La serie SIAF solo llega hasta 2025; los
+#    CUIs del detalle se completan con una fila 2026 (chunk fusionar-temporal),
+#    así que su presencia temporal se garantiza por unión y no se excluyen por
+#    carecer de historia 2012-2025. En la práctica el universo queda det ∩ geo.
+codigos_grd_ts_ext <- base::union(codigos_grd_ts, codigos_grd_det)
 codigos_grd_comunes <- base::Reduce(
   intersect,
-  list(codigos_grd_det, codigos_grd_geo, codigos_grd_ts)
+  list(codigos_grd_det, codigos_grd_geo, codigos_grd_ts_ext)
 )
 
 cat(glue::glue(
@@ -556,19 +574,16 @@ cat(glue::glue(
 
 ## `df_det_inv` → filtro GRD → `df_det_inv_grd_dp`
 
-Filtramos por `programa == "GESTIÓN DE RIESGOS Y EMERGENCIAS"`. Dado
-que la tilde puede fallar si la codificación del CSV cambia, usamos
-una comparación que tolera variantes normalizando con
-`stringi::stri_trans_general`.
+La selección GRD ampliada (programa objetivo + drenaje pluvial +
+`ind_ioarr_emerg == "SI"`, excluyendo el subprograma de incendios) ya se
+aplicó en el chunk `identificar-universo-grd`, donde quedó el objeto
+`df_det_inv_grd`. Aquí solo lo restringimos al universo común de las tres
+bases.
 
 ```{r filtrar-grd}
-# programa_objetivo fue definido en identificar-universo-grd.
-df_det_inv_grd <- df_det_inv[
-  stringi::stri_trans_general(programa, "Latin-ASCII") == programa_objetivo
-]
-
+# df_det_inv_grd se construyó en identificar-universo-grd (selección GRD ampliada).
 cat(glue::glue(
-  "Filas GRD (filtro programa): {nrow(df_det_inv_grd)} de {nrow(df_det_inv)}\n"
+  "Filas GRD (filtro selección): {nrow(df_det_inv_grd)} de {nrow(df_det_inv)}\n"
 ))
 
 # Liberar memoria — df_det_inv ya no se usa en el resto del cuaderno.

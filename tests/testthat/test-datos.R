@@ -90,29 +90,87 @@ test_that("round-trip guardar/cargar preserva los objetos", {
   unlink(ruta)
 })
 
-# --- construir_universo_comun ------------------------------------------------
-test_that("construir_universo_comun retorna la intersección correcta", {
+# --- filtrar_det_grd ---------------------------------------------------------
+test_that("filtrar_det_grd: incluye programa GRD, drenaje e ioarr; excluye incendios", {
   det <- data.table::data.table(
-    codigo_unico = c("A", "B", "C"),
-    programa     = c("GESTION DE RIESGOS Y EMERGENCIAS",
-                     "GESTION DE RIESGOS Y EMERGENCIAS",
-                     "OTRO PROGRAMA")
+    codigo_unico    = c("A", "C", "D", "E", "F", "Z"),
+    programa        = c("GESTION DE RIESGOS Y EMERGENCIAS", "OTRO", "OTRO",
+                        "GESTIÓN DE RIESGOS Y EMERGENCIAS", "OTRO", "OTRO"),
+    des_tipologia   = c("X", "SERVICIO DE DRENAJE PLUVIAL", "Y", "Z",
+                        "SISTEMA DE DRENAJE PLUVIAL", "W"),
+    subprograma     = c(NA, NA, NA, "DEFENSA CONTRA INCENDIOS Y EMERGENCIAS MENORES",
+                        "DEFENSA CONTRA INCENDIOS Y EMERGENCIAS MENORES", NA),
+    ind_ioarr_emerg = c("NO", "NO", "SI", "NO", "SI", "NO")
+  )
+
+  res <- filtrar_det_grd(det)
+  # A=programa GRD, C=drenaje servicio, D=ioarr SI → incluidos.
+  # E=programa GRD pero incendios → excluido (exclusión prevalece pese a la tilde).
+  # F=ioarr SI pero incendios → excluido (exclusión prevalece sobre inclusión).
+  # Z=ninguna condición → excluido.
+  expect_setequal(res$codigo_unico, c("A", "C", "D"))
+})
+
+# --- construir_universo_comun ------------------------------------------------
+test_that("construir_universo_comun: intersección con selección GRD ampliada y unión 2026", {
+  det <- data.table::data.table(
+    codigo_unico    = c("A", "B", "C", "D", "E", "F", "G"),
+    programa        = c("GESTION DE RIESGOS Y EMERGENCIAS",
+                        "GESTION DE RIESGOS Y EMERGENCIAS",
+                        "OTRO", "OTRO",
+                        "GESTION DE RIESGOS Y EMERGENCIAS",
+                        "OTRO",
+                        "GESTION DE RIESGOS Y EMERGENCIAS"),
+    des_tipologia   = c("X", "X", "SISTEMA DE DRENAJE PLUVIAL", "Y", "X", "X", "X"),
+    subprograma     = c(NA, NA, NA, NA,
+                        "DEFENSA CONTRA INCENDIOS Y EMERGENCIAS MENORES",
+                        "DEFENSA CONTRA INCENDIOS Y EMERGENCIAS MENORES", NA),
+    ind_ioarr_emerg = c("NO", "NO", "NO", "SI", "NO", "SI", "NO")
   )
   geo <- sf::st_sf(
-    codigo_unico = c("A", "B", "D"),
+    codigo_unico = c("A", "B", "C", "D", "E", "F"),
     geometry     = sf::st_sfc(
-      sf::st_point(c(0, 0)),
-      sf::st_point(c(1, 1)),
-      sf::st_point(c(2, 2))
+      sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), sf::st_point(c(2, 2)),
+      sf::st_point(c(3, 3)), sf::st_point(c(4, 4)), sf::st_point(c(5, 5))
     ),
     crs = 4326
   )
+  # B y D no tienen historia 2012-2025 (no están en ts): deben sobrevivir vía la
+  # unión 2026. G está en ts pero no en geo: se excluye por faltar geo.
   ts <- data.table::data.table(
-    codigo_unico = c("A", "B", "E"),
+    codigo_unico = c("A", "C", "E", "F", "G"),
     anio         = 2024L,
     pia = 0, pim = 0, devengado = 0
   )
 
   resultado <- construir_universo_comun(det, geo, ts)
-  expect_setequal(resultado, c("A", "B"))
+  # A=GRD, B=GRD (2026-only), C=drenaje, D=ioarr (2026-only) → incluidos.
+  # E,F=incendios → excluidos. G=sin geo → excluido.
+  expect_setequal(resultado, c("A", "B", "C", "D"))
+})
+
+test_that("construir_universo_comun: descarta CUIs vacíos/NA", {
+  det <- data.table::data.table(
+    codigo_unico    = c("A", "", NA_character_),
+    programa        = rep("GESTION DE RIESGOS Y EMERGENCIAS", 3),
+    des_tipologia   = c("X", "X", "X"),
+    subprograma     = c(NA, NA, NA),
+    ind_ioarr_emerg = c("NO", "NO", "NO")
+  )
+  geo <- sf::st_sf(
+    codigo_unico = c("A", "", NA_character_),
+    geometry     = sf::st_sfc(
+      sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), sf::st_point(c(2, 2))
+    ),
+    crs = 4326
+  )
+  ts <- data.table::data.table(
+    codigo_unico = c("A", "", NA_character_),
+    anio         = 2024L,
+    pia = 0, pim = 0, devengado = 0
+  )
+
+  resultado <- construir_universo_comun(det, geo, ts)
+  expect_setequal(resultado, "A")
+  expect_false(any(is.na(resultado) | trimws(resultado) == ""))
 })

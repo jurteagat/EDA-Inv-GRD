@@ -19,9 +19,8 @@ raw/
 *.cpg
 *.shp.xml
 
-# Excepciones: archivos pequeños curados que sí se rastrean
-!midputs/rds/nombres_abreviados.csv
-# fechas_fuentes.csv ya no se rastrea: se descarga desde Drive (DRIVE_IDS$fechas_fuentes)
+# nombres_abreviados.csv y fechas_fuentes.csv no se rastrean:
+# se descargan desde Drive (DRIVE_IDS en R/datos.R)
 
 ._*
 *.html

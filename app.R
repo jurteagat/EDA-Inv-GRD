@@ -73,7 +73,7 @@ ui <- bslib::page_navbar(
     shiny::selectInput(
       "f_ioarr", "IOARR/Emergencia",
       choices  = opciones_ioarr,
-      selected = "Todos"
+      selected = "NO"
     ),
     shiny::selectizeInput(
       "f_tipo_inv", "Tipo de inversión",
@@ -174,7 +174,7 @@ ui <- bslib::page_navbar(
     bslib::layout_columns(
       col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
       card_widget("Distribuciones de montos (log₁₀)",
-                  shiny::plotOutput("g_montos", height = "380px")),
+                  plotly::plotlyOutput("g_montos", height = "380px")),
       card_widget("Boxplots de costo por tipología (log₁₀)",
                   shiny::plotOutput("g_boxplots_tipo", height = "440px"))
     ),
@@ -246,11 +246,9 @@ ui <- bslib::page_navbar(
         bslib::card_body(
           htmltools::p(
             htmltools::strong("EDA de Inversiones GRD — Perú."),
-            "Dashboard Shiny para el análisis exploratorio de datos (EDA) ",
-            "de las inversiones del programa - división funcional de ",
-            "Gestión de Riesgos y Emergencias ",
-            "en el marco del Invierte.pe del Ministerio de ",
-            "Economía y Finanzas (MEF) del Perú."            
+            "Dashboard para el análisis exploratorio de datos (EDA) ",
+            "de las inversiones vinculadas a gestión del riesgo de desastres, ",
+            "que se encuentran en el marco del Invierte.pe  "                       
           ),
           htmltools::tags$ul(
             style = "margin-bottom:0;",
@@ -263,8 +261,26 @@ ui <- bslib::page_navbar(
             ),
             htmltools::tags$li(
               htmltools::tags$small(htmltools::tags$em(
-                "Los nombres abreviados de inversiones han sido generados automáticamente ",
+                "Los nombres abreviados de inversiones han sido generados automáticamente ",                
                 "con inteligencia artificial. Pueden contener imprecisiones."
+              ))
+            ),
+            htmltools::tags$li(
+              htmltools::tags$small(htmltools::tags$em(
+                "Para la selección de las inversiones, se ha considerado el programa/ división ",
+                "funcional de Gestión de Riesgos y Emergencias (excluyendo a lo vinculado a ",
+                "defensa contra incendios y emergencias menores, por corresponder a una ",
+                "perspectiva diferente), la tipología de inversión vinculada a Drenaje ",
+                "Pluvial, y las IOARR de emergencia, en el marco del Invierte.pe del ",                
+                "Ministerio de Economía y Finanzas (MEF) del Perú."
+              ))
+            ),
+            htmltools::tags$li(
+              htmltools::tags$small(htmltools::tags$em(                
+                "El presente dashboard corresponde a una iniciativa personal con fines ",
+                "didácticos, por lo que puede contener errores. Se recomienda siempre ",
+                "verificar la información con las fuentes oficiales de información y ",                
+                "con la normativa vigente."
               ))
             )
           )
@@ -370,7 +386,7 @@ server <- function(input, output, session) {
     tip  = NULL,
     dep  = NULL,
     sit  = NULL,
-    ioarr = "Todos",
+    ioarr = "NO",
     tinv = NULL
   )
 
@@ -386,12 +402,12 @@ server <- function(input, output, session) {
     shiny::updateSelectizeInput(session, "f_tipologia", selected = character(0))
     shiny::updateSelectizeInput(session, "f_depto",     selected = character(0))
     shiny::updateSelectizeInput(session, "f_situacion", selected = character(0))
-    shiny::updateSelectInput(   session, "f_ioarr",     selected = "Todos")
+    shiny::updateSelectInput(   session, "f_ioarr",     selected = "NO")
     shiny::updateSelectizeInput(session, "f_tipo_inv",  selected = character(0))
     filtros$tip  <- NULL
     filtros$dep  <- NULL
     filtros$sit  <- NULL
-    filtros$ioarr <- "Todos"
+    filtros$ioarr <- "NO"
     filtros$tinv <- NULL
   })
 
@@ -509,21 +525,11 @@ server <- function(input, output, session) {
   # ---- Mapa global --------------------------------------------------------
   output$mapa <- leaflet::renderLeaflet({
     shiny::withProgress(message = "Cargando mapa…", value = 0.5, {
+      # El control de capas y la leyenda se construyen en el observe (vía
+      # leafletProxy) para que reflejen solo las tipologías presentes en el filtro.
       leaflet::leaflet() |>
         leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
-        leaflet::setView(lng = -75, lat = -9.5, zoom = 5) |>
-        leaflet::addLayersControl(
-          overlayGroups = tipologias_por_freq,
-          options       = leaflet::layersControlOptions(collapsed = TRUE)
-        ) |>
-        leaflet::addLegend(
-          position  = "bottomright",
-          pal       = pal_tipologia,
-          values    = tipologias_por_freq,
-          title     = "Tipología",
-          opacity   = 0.8,
-          className = "info legend leyenda-tipologia"
-        )
+        leaflet::setView(lng = -75, lat = -9.5, zoom = 5)
     })
   })
   shiny::observe({
@@ -535,11 +541,18 @@ server <- function(input, output, session) {
     for (tip in tipologias_por_freq) {
       p <- leaflet::clearGroup(p, tip)
     }
+    p <- leaflet::removeControl(p, "leyenda_tip")
+    p <- leaflet::removeLayersControl(p)
     if (nrow(df) == 0) return(invisible())
+
+    # Tipologías presentes en el filtro, conservando el orden global de frecuencia.
+    tip_presentes <- tipologias_por_freq[
+      tipologias_por_freq %in% unique(plain$des_tipologia)
+    ]
 
     radios <- radios_log(plain$costo_actualizado)
 
-    for (tip in tipologias_por_freq) {
+    for (tip in tip_presentes) {
       idx <- which(plain$des_tipologia == tip)
       if (length(idx) == 0) next
       df_tip  <- df[idx, ]
@@ -556,6 +569,7 @@ server <- function(input, output, session) {
         opacity     = 0.6,
         popup       = ~glue::glue(
           "<b>{nombre_abreviado}</b><br>",
+          "CUI: {codigo_unico}<br>",
           "<i>{des_tipologia}</i><br>",
           "Entidad: {entidad}<br>",
           "Costo actual.: S/ {scales::label_comma()(costo_actualizado)}<br>",
@@ -570,6 +584,23 @@ server <- function(input, output, session) {
         )
       )
     }
+
+    # Reconstruir control de capas y leyenda con las tipologías presentes.
+    p <- leaflet::addLayersControl(
+      p,
+      overlayGroups = tip_presentes,
+      options       = leaflet::layersControlOptions(collapsed = TRUE)
+    )
+    leaflet::addLegend(
+      p,
+      layerId   = "leyenda_tip",
+      position  = "bottomright",
+      pal       = pal_tipologia,
+      values    = tip_presentes,
+      title     = "Tipología",
+      opacity   = 0.8,
+      className = "info legend leyenda-tipologia"
+    )
   })
 
   # ---- Barplot: top 15 departamentos -------------------------------------
@@ -611,34 +642,55 @@ server <- function(input, output, session) {
   })
 
   # ---- Distribuciones de montos -----------------------------------------
-  output$g_montos <- shiny::renderPlot({
+  output$g_montos <- plotly::renderPlotly({
     plain <- datos_filt_plain()
     shiny::validate(shiny::need(nrow(plain) > 0, "Sin datos."))
 
     df_largo <- plain |>
-      dplyr::select(monto_viable, costo_actualizado,
-                    pia_anio_actual, pim_anio_actual) |>
+      dplyr::select(costo_actualizado, monto_viable) |>
       tidyr::pivot_longer(dplyr::everything(),
                           names_to = "variable", values_to = "valor") |>
       dplyr::filter(is.finite(valor) & valor > 0) |>
       dplyr::mutate(variable = dplyr::recode(
         variable,
-        monto_viable      = "Monto viable",
         costo_actualizado = "Costo actual.",
-        pia_anio_actual   = "PIA actual",
-        pim_anio_actual   = "PIM actual"
+        monto_viable      = "Monto viable"
       ))
 
     shiny::validate(shiny::need(nrow(df_largo) > 0,
                                 "Sin valores > 0 para log₁₀."))
 
-    ggplot2::ggplot(df_largo, ggplot2::aes(x = valor)) +
-      ggplot2::geom_histogram(bins = 40, fill = paleta_grd["azul"],
-                              color = "white", alpha = 0.8) +
-      ggplot2::scale_x_log10(labels = scales::label_comma()) +
+    # geom_histogram no admite un text aes por barra para ggplotly, así que se
+    # precalculan los bins en escala log10 (replica bins = 40 con scale_x_log10)
+    # y se dibuja con geom_col + tooltip que muestra el rango de monto en soles.
+    rng    <- range(log10(df_largo$valor))
+    ancho  <- (rng[2] - rng[1]) / 40
+    cortes <- seq(rng[1], rng[2], length.out = 41)
+
+    df_bins <- df_largo |>
+      dplyr::mutate(.bin = cut(log10(valor), breaks = cortes,
+                               include.lowest = TRUE, labels = FALSE)) |>
+      dplyr::group_by(variable, .bin) |>
+      dplyr::summarise(frecuencia = dplyr::n(),
+                       min_soles  = min(valor), max_soles = max(valor),
+                       .groups = "drop") |>
+      dplyr::mutate(
+        centro_log = cortes[.bin] + ancho / 2,
+        text = paste0("Monto: S/ ", scales::label_comma()(round(min_soles)),
+                      " – S/ ", scales::label_comma()(round(max_soles)),
+                      "<br>Frecuencia: ", frecuencia)
+      )
+
+    g <- ggplot2::ggplot(df_bins,
+                         ggplot2::aes(x = centro_log, y = frecuencia, text = text)) +
+      ggplot2::geom_col(width = ancho, fill = paleta_grd["azul"],
+                        color = "white", alpha = 0.8) +
+      ggplot2::scale_x_continuous(labels = function(x) scales::label_comma()(10^x)) +
       ggplot2::facet_wrap(~variable, scales = "free_y", ncol = 2) +
       ggplot2::labs(x = "Soles (escala log₁₀)", y = "Frecuencia") +
       theme_grd()
+
+    plotly::ggplotly(g, tooltip = "text")
   })
 
   # ---- Boxplots por tipología (top 10) -----------------------------------
@@ -664,14 +716,20 @@ server <- function(input, output, session) {
 
     ggplot2::ggplot(df_box,
                     ggplot2::aes(x = costo_actualizado, y = des_tipologia)) +
+      # width acota el grosor de las cajas para que no se vean
+      # desproporcionadas frente al texto al ampliar a pantalla completa.
       ggplot2::geom_boxplot(fill = paleta_grd["azul"], alpha = 0.6,
+                            width = 0.5,
                             outlier.size = 0.6, outlier.alpha = 0.3) +
       ggplot2::scale_x_log10(labels = scales::label_comma()) +
       ggplot2::labs(x = "Costo actualizado (log₁₀, S/)", y = NULL,
                     subtitle = "Top 10 tipologías por frecuencia") +
       theme_grd() +
-      ggplot2::theme(axis.text.y = ggplot2::element_text(size = 8,
-                                                         lineheight = 0.85))
+      ggplot2::theme(
+        axis.text.y  = ggplot2::element_text(size = 12, lineheight = 0.9),
+        axis.text.x  = ggplot2::element_text(size = 11),
+        axis.title.x = ggplot2::element_text(size = 12)
+      )
   })
 
   # ---- Outliers de costo -------------------------------------------------
@@ -904,15 +962,8 @@ server <- function(input, output, session) {
     shiny::validate(shiny::need(nrow(serie) > 0,
                                 "Sin serie temporal para esta inversión."))
 
-    # Agregar fila 2026 desde el detalle del año actual (devengado real, no
-    # estimado): PIA/PIM/Devengado del año en curso.
-    fila_2026 <- tibble::tibble(
-      anio      = 2026L,
-      pia       = dplyr::coalesce(fila$pia_anio_actual[1], 0),
-      pim       = dplyr::coalesce(fila$pim_anio_actual[1], 0),
-      devengado = dplyr::coalesce(fila$dev_anio_actual[1], 0)
-    )
-    serie <- dplyr::bind_rows(serie, fila_2026) |> dplyr::arrange(anio)
+    # La serie ya incluye el año 2026 (df_grd_2012_25_dpf se construye con la fila
+    # 2026 desde el detalle), por lo que no se agrega manualmente aquí.
 
     costo_foco <- fila$costo_actualizado[1]
     shiny::validate(shiny::need(
@@ -1065,10 +1116,10 @@ server <- function(input, output, session) {
   output$tbl_fechas_fuentes <- DT::renderDT({
     shiny::req(!is.null(fechas_fuentes))
     DT::datatable(
-      fechas_fuentes[, c("fuente", "archivo", "fecha_dato"),
+      fechas_fuentes[, c("fuente", "fecha_dato"),
                      with = FALSE],
       rownames = FALSE,
-      colnames = c("Fuente", "Archivo", "Fecha del dato"),
+      colnames = c("Fuente", "Fecha del dato"),
       options  = list(dom = "t", pageLength = 20, scrollX = TRUE)
     )
   })
