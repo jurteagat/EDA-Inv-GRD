@@ -18,9 +18,11 @@ EDA-Inv-GRD/
 ├── app.R                   # Dashboard Shiny (UI bslib + server reactivo)
 ├── global.R                # Precarga, pipeline y caché de arranque de la app
 ├── R/                      # Funciones puras testeables
-│   ├── helpers.R           #   label_var, fmt_soles, theme_grd, agregaciones
+│   ├── helpers.R           #   label_var, fmt_soles, radios_log, agregaciones
+│   ├── theme_jut.R         #   sistema de estilo visual "jut" (paletas, theme_jut)
 │   ├── datos.R             #   descargas Drive, pipeline, caché
 │   └── exportar.R          #   exportaciones CSV/GPKG/PDF
+├── www/                    # Assets del estilo: estilos-jut.css, fonts/, iconos (logo + favicon)
 ├── tests/testthat/         # Tests unitarios + shinytest2
 ├── midputs/rds/            # Datos intermedios .rds (descargados de Drive)
 ├── raw/                    # Crudos del MEF (no editar, no rastreados)
@@ -82,6 +84,7 @@ Versión interactiva del cuaderno con filtros de tipología, departamento, situa
 - La lógica está extraída en funciones puras en `R/` (testeadas con `testthat` + `shinytest2`).
 - En el primer arranque, `global.R` ejecuta el pipeline completo y guarda una **caché** (`midputs/rds/_cache_app.rds`, no rastreada). Para forzar su reconstrucción: `GRD_REBUILD_CACHE=1 Rscript -e 'source("global.R")'`.
 - Exporta los datos filtrados a **CSV** (geo y temporal), **GeoPackage** y un **reporte PDF** por inversión (Typst vía `reporte_inversion.qmd`).
+- **Estilo visual "jut"** (Bootswatch Lux + Nunito Sans + tema ggplot BBC-minimal): definido en `R/theme_jut.R` y `www/`. Navbar oscuro y compacto con logo, value boxes en progresión azul, paletas de marca y favicon.
 - Desplegable en **Posit Connect** (`manifest.json`), donde la caché se reconstruye descargando desde Drive.
 
 ---
