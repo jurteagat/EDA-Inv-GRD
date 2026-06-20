@@ -4,6 +4,8 @@ Cuaderno Quarto de R y dashboard Shiny para el **análisis exploratorio de datos
 
 El proyecto combina tres fuentes grandes del MEF: el detalle de inversiones (CSV ~388 MB), los puntos georreferenciados (GeoPackage ~265 MB) y la serie de ejecución presupuestal 2012-2025 (CSV ~266 MB), extendida a 2026 con el devengado del año en curso proveniente del detalle de inversiones.
 
+La selección de inversiones GRD no se limita al programa *Gestión de Riesgos y Emergencias*: también incluye las tipologías de **drenaje pluvial** (servicio/sistema) y las **IOARR de emergencia** (`ind_ioarr_emerg = "SI"`), y excluye el subprograma de defensa contra incendios y emergencias menores.
+
 ---
 
 ## Estructura del proyecto
@@ -73,7 +75,7 @@ La preparación de datos es opcional y vive en `00_datos_entrada.qmd`, que traba
 
 ## Dashboard Shiny
 
-Versión interactiva del cuaderno con filtros de tipología, departamento, situación y tipo de inversión. Comparte los mismos `.rds` de `midputs/rds/`.
+Versión interactiva del cuaderno con filtros de tipología, departamento, situación, **IOARR/emergencia** (por defecto en "NO") y tipo de inversión. Comparte los mismos `.rds` de `midputs/rds/`.
 
 **Pestañas:** Resumen · Mapa · Distribuciones · Departamentos · Inversión Seleccionada · Ficha Técnica.
 
