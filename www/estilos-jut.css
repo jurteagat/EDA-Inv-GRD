@@ -1,0 +1,135 @@
+/* estilos-jut.css — pulido visual del sistema "jut".
+   Complementa un bs_theme(bootswatch = "lux") (o cualquier tema Bootstrap 5).
+   Lux define el look base (fondo blanco, primario casi negro, nav en mayúsculas,
+   Nunito Sans); aquí solo queda el @font-face local de Nunito Sans (robustez
+   offline) y tweaks neutrales que Bootstrap no expone como variable. */
+
+/* ---- Fuente Nunito Sans (variable, OFL, vendorizada) --------------------- */
+/* @font-face local: garantiza la fuente sin red, también para los gráficos
+   plotly (que renderizan en el navegador). Ajusta la ruta de `url()` a donde
+   copiaste la carpeta fonts/ relativa a este CSS. */
+@font-face {
+  font-family: "Nunito Sans";
+  src: url("fonts/NunitoSans-Variable.ttf") format("truetype-variations");
+  font-weight: 100 900;       /* fuente variable: pesos reales en el navegador */
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---- Navbar compacto ----------------------------------------------------- */
+/* Lux trae un navbar alto; bajamos el padding vertical para ganar área útil.
+   Combina con navbar_options(bg, theme = "dark") en page_navbar. */
+.navbar {
+  --bs-navbar-padding-y: 0.15rem;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+  min-height: 0;
+}
+.navbar .navbar-brand {
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+}
+/* Logo a la izquierda del título; alto atado a la altura del navbar compacto. */
+.navbar .navbar-brand .navbar-logo {
+  height: 1.7rem;
+  width: auto;
+  margin-right: 0.5rem;
+}
+/* Pestañas en una sola línea y con espaciado más ceñido: Lux deja mucho padding
+   e interletrado, lo que ensancha el bloque de pestañas y obliga al navbar a
+   crecer a dos filas. */
+.navbar .nav-link {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+/* Crédito del desarrollador (único nav-item con > div): info secundaria, en
+   cuerpo pequeño y sin envolver. */
+.navbar .nav-item > div {
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+/* En pantallas anchas, una sola fila: el nav-spacer empuja el crédito a la
+   derecha y se evita que las pestañas/crédito salten a una 2ª fila. El umbral
+   coincide con el ancho mínimo en que todo cabe sin recortarse; por debajo,
+   bslib apila en filas (no hay hamburguesa). */
+@media (min-width: 1360px) {
+  .navbar .navbar-nav { flex-wrap: nowrap; }
+  .navbar .bslib-nav-spacer { flex-grow: 1; }
+}
+/* Contenido propio del navbar (texto e iconos del desarrollador) legible sobre
+   el fondo oscuro: Lux no los aclara automáticamente al no ser .nav-link. */
+.navbar .nav-item,
+.navbar .nav-item a {
+  color: rgba(255, 255, 255, 0.85);
+}
+.navbar .nav-item a:hover {
+  color: #ffffff;
+}
+
+/* ---- Espaciado general de las grillas ------------------------------------ */
+.bslib-grid.grid {
+  gap: 1rem;
+}
+
+/* ---- Value boxes: valor en una línea, tamaño contenido -------------------- */
+.bslib-value-box .value-box-value {
+  white-space: nowrap;
+  font-size: 1.3rem !important;
+}
+
+/* ---- Tablas DT más compactas --------------------------------------------- */
+/* Lux deja filas altas; bajamos padding (alto de fila) y tamaño de letra. El
+   !important pisa el padding de celda que Bootstrap 5 aplica vía
+   .table > :not(caption) > * > *. */
+.dataTables_wrapper {
+  font-size: 0.8rem;
+}
+table.dataTable td,
+table.dataTable th {
+  padding: 0.25rem 0.5rem !important;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+/* Controles (Show entries, Search, paginación, info) también más discretos. */
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+  font-size: 0.8rem;
+}
+/* Fila de filtros por columna (filter = "top"): los inputs "All" heredan el
+   .form-control alto de Lux (padding 12px 24px → 44px de alto), lo que infla esa
+   fila. Los compactamos a la altura de una celda normal. */
+table.dataTable thead .form-control,
+.dataTables_scrollHead .form-control {
+  padding: 0.15rem 0.5rem;
+  height: auto;
+  min-height: 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+/* ---- Leyenda de categorías en mapas Leaflet (compacta) -------------------- */
+/* Añade la clase "leyenda-categoria" a la leyenda (className en addLegend). */
+.leaflet-container .leyenda-categoria,
+.leaflet-container .leyenda-categoria * {
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+}
+.leaflet-container .leyenda-categoria {
+  max-width: 200px !important;
+  padding: 4px 6px !important;
+  white-space: normal !important;
+}
+.leaflet-container .leyenda-categoria i {
+  width: 10px !important;
+  height: 10px !important;
+  margin-right: 4px !important;
+}

@@ -79,35 +79,10 @@ radios_log <- function(valores, min_r = 3, max_r = 9) {
   min_r + (lv - rng[1]) / (rng[2] - rng[1] + 1e-9) * (max_r - min_r)
 }
 
-# --- Tema gráfico GRD (estilo NYT/BBC) ----------------------------------------
-paleta_grd <- c(
-  verde    = "#1A9850",
-  azul     = "#4393C3",
-  rojo     = "#D6604D",
-  azul_osc = "#2166AC",
-  naranja  = "#F46D43",
-  morado   = "#762A83"
-)
-
-theme_grd <- function(base_size = 11) {
-  ggplot2::theme_minimal(base_size = base_size) +
-    ggplot2::theme(
-      plot.title         = ggplot2::element_text(face = "bold", hjust = 0,
-                                                  size = base_size * 1.15),
-      plot.subtitle      = ggplot2::element_text(color = "#555555", hjust = 0,
-                                                  size = base_size * 0.9),
-      axis.title         = ggplot2::element_text(color = "#444444",
-                                                  size = base_size * 0.85),
-      axis.text          = ggplot2::element_text(color = "#666666"),
-      panel.grid.major.x = ggplot2::element_blank(),
-      panel.grid.minor   = ggplot2::element_blank(),
-      panel.grid.major.y = ggplot2::element_line(color = "#EBEBEB", linewidth = 0.4),
-      legend.position    = "bottom",
-      legend.key.size    = ggplot2::unit(0.8, "lines"),
-      legend.text        = ggplot2::element_text(size = base_size * 0.8),
-      strip.text         = ggplot2::element_text(face = "bold", color = "#333333")
-    )
-}
+# --- Tema gráfico y paletas ----------------------------------------------------
+# El tema (theme_jut) y las paletas (paleta_jut, paleta_jut_cualitativa, …) viven
+# ahora en R/theme_jut.R, fuente única de la marca visual "jut". Aquí solo quedan
+# formato, etiquetas y agregaciones.
 
 # --- Agregaciones -------------------------------------------------------------
 

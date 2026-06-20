@@ -25,27 +25,38 @@ card_widget <- function(titulo, ..., padding = NULL) {
   )
 }
 
+# Tema visual de marca "jut": Bootswatch Lux + Nunito Sans (servida vía
+# @font-face local en www/estilos-jut.css para robustez offline) + fallbacks.
+tema_bs_jut <- bslib::bs_theme(
+  version      = 5,
+  bootswatch   = "lux",
+  font_scale   = 0.85,
+  base_font    = bslib::font_collection("Nunito Sans", "Helvetica", "Arial", "sans-serif"),
+  heading_font = bslib::font_collection("Nunito Sans", "Helvetica", "Arial", "sans-serif")
+)
+
+# Favicon (icono de la pestaña del navegador) + CSS de marca (font-face, DT
+# compacto, value boxes, grid).
+header_jut <- htmltools::tags$head(
+  htmltools::tags$link(rel = "icon", type = "image/svg+xml", href = "icono-jut.svg"),
+  htmltools::tags$link(rel = "stylesheet", href = "estilos-jut.css")
+)
+
 # ============================================================================
 # UI
 # ============================================================================
 
 ui <- bslib::page_navbar(
-  title = "Inversiones GRD — Perú",
-  theme = bslib::bs_theme(
-    version    = 5,
-    bootswatch = "flatly",
-    font_scale = 0.7,
-    base_font  = bslib::font_google("Inter", wght = c(400, 600),
-                                    local = FALSE),
-    heading_font = bslib::font_google("Inter", wght = 700, local = FALSE)
+  title = htmltools::tagList(
+    htmltools::img(src = "icono-inv-grd7.svg", alt = "", class = "navbar-logo"),
+    "Inversiones GRD — Perú"
   ),
+  theme = tema_bs_jut,
+  # Navbar oscuro (near-black de la marca, ata con la progresión de value boxes)
+  # con texto claro. La altura se compacta vía CSS en www/estilos-jut.css.
+  navbar_options = bslib::navbar_options(bg = "#1A1A1A", theme = "dark"),
   fillable = TRUE,
-  header   = htmltools::tagList(
-    css_leyenda,
-    htmltools::tags$style(htmltools::HTML(
-      ".bslib-value-box .value-box-value { white-space: nowrap; font-size: 1.3rem !important; }"
-    ))
-  ),
+  header   = htmltools::tagList(header_jut, css_leyenda),
 
   sidebar = bslib::sidebar(
     id     = "sidebar_principal",
@@ -121,19 +132,19 @@ ui <- bslib::page_navbar(
       bslib::value_box("Inversiones",
                        shiny::textOutput("kpi_n", inline = TRUE),
                        showcase = bsicons::bs_icon("folder"),
-                       theme = "primary"),
+                       theme = bslib::value_box_theme(bg = paleta_jut_valuebox[1], fg = "#FFFFFF")),
       bslib::value_box("Costo actual. total (S/)",
                        shiny::textOutput("kpi_costo", inline = TRUE),
                        showcase = bsicons::bs_icon("cash-stack"),
-                       theme = "success"),
+                       theme = bslib::value_box_theme(bg = paleta_jut_valuebox[2], fg = "#FFFFFF")),
       bslib::value_box("Monto viable total (S/)",
                        shiny::textOutput("kpi_viable", inline = TRUE),
                        showcase = bsicons::bs_icon("check-circle"),
-                       theme = "info"),
+                       theme = bslib::value_box_theme(bg = paleta_jut_valuebox[3], fg = "#FFFFFF")),
       bslib::value_box("Av. financiero medio",
                        shiny::textOutput("kpi_avance", inline = TRUE),
                        showcase = bsicons::bs_icon("speedometer2"),
-                       theme = "warning")
+                       theme = bslib::value_box_theme(bg = paleta_jut_valuebox[4], fg = "#FFFFFF"))
     ),
     bslib::layout_columns(
       col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
@@ -358,7 +369,7 @@ ui <- bslib::page_navbar(
   bslib::nav_item(
     htmltools::div(
       style = "display:flex; align-items:center; gap:8px;",
-      htmltools::span("Desarrollado por Juan Urteaga Tirado"),
+      htmltools::span("Juan Urteaga Tirado"),
       htmltools::tags$a(
         href   = "https://www.linkedin.com/in/jnut/",
         target = "_blank",
@@ -633,10 +644,10 @@ server <- function(input, output, session) {
       ggplot2::aes(x = costo_total, y = departamento,
                    text = scales::label_comma()(costo_total))
     ) +
-      ggplot2::geom_col(fill = paleta_grd["azul_osc"]) +
+      ggplot2::geom_col(fill = paleta_jut["azul_osc"]) +
       ggplot2::scale_x_continuous(labels = scales::label_comma()) +
       ggplot2::labs(x = "Costo actualizado total (S/)", y = NULL) +
-      theme_grd()
+      theme_jut()
 
     plotly::ggplotly(g, tooltip = c("y", "text"))
   })
@@ -683,12 +694,12 @@ server <- function(input, output, session) {
 
     g <- ggplot2::ggplot(df_bins,
                          ggplot2::aes(x = centro_log, y = frecuencia, text = text)) +
-      ggplot2::geom_col(width = ancho, fill = paleta_grd["azul"],
+      ggplot2::geom_col(width = ancho, fill = paleta_jut["azul"],
                         color = "white", alpha = 0.8) +
       ggplot2::scale_x_continuous(labels = function(x) scales::label_comma()(10^x)) +
       ggplot2::facet_wrap(~variable, scales = "free_y", ncol = 2) +
       ggplot2::labs(x = "Soles (escala log₁₀)", y = "Frecuencia") +
-      theme_grd()
+      theme_jut()
 
     plotly::ggplotly(g, tooltip = "text")
   })
@@ -718,13 +729,13 @@ server <- function(input, output, session) {
                     ggplot2::aes(x = costo_actualizado, y = des_tipologia)) +
       # width acota el grosor de las cajas para que no se vean
       # desproporcionadas frente al texto al ampliar a pantalla completa.
-      ggplot2::geom_boxplot(fill = paleta_grd["azul"], alpha = 0.6,
+      ggplot2::geom_boxplot(fill = paleta_jut["azul"], alpha = 0.6,
                             width = 0.5,
                             outlier.size = 0.6, outlier.alpha = 0.3) +
       ggplot2::scale_x_log10(labels = scales::label_comma()) +
       ggplot2::labs(x = "Costo actualizado (log₁₀, S/)", y = NULL,
                     subtitle = "Top 10 tipologías por frecuencia") +
-      theme_grd() +
+      theme_jut() +
       ggplot2::theme(
         axis.text.y  = ggplot2::element_text(size = 12, lineheight = 0.9),
         axis.text.x  = ggplot2::element_text(size = 11),
@@ -792,15 +803,15 @@ server <- function(input, output, session) {
     ) +
       ggplot2::geom_line(linewidth = 1) +
       ggplot2::scale_color_manual(
-        values = c(PIA = paleta_grd[["verde"]], PIM = paleta_grd[["azul"]],
-                   Devengado = paleta_grd[["rojo"]])
+        values = c(PIA = paleta_jut[["verde"]], PIM = paleta_jut[["azul"]],
+                   Devengado = paleta_jut[["rojo"]])
       ) +
       ggplot2::scale_y_continuous(
         labels = scales::label_number(scale = 1e-6, accuracy = 0.1, suffix = " M")
       ) +
       ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
       ggplot2::labs(x = NULL, y = "Soles (millones)", color = NULL) +
-      theme_grd() +
+      theme_jut() +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1,
                                                          size = 8))
 
@@ -856,7 +867,7 @@ server <- function(input, output, session) {
         lng         = ~lon,
         lat         = ~lat,
         radius      = radios_d,
-        color       = paleta_grd["azul_osc"],
+        color       = paleta_jut["azul_osc"],
         fillOpacity = 0.5,
         stroke      = TRUE,
         weight      = 0.5,
@@ -996,13 +1007,13 @@ server <- function(input, output, session) {
                           color = "grey50", linewidth = 0.6) +
       ggplot2::geom_line(linewidth = 1) +
       ggplot2::scale_color_manual(
-        values = c(PIA = paleta_grd[["verde"]], PIM = paleta_grd[["azul"]],
-                   Devengado = paleta_grd[["rojo"]])
+        values = c(PIA = paleta_jut[["verde"]], PIM = paleta_jut[["azul"]],
+                   Devengado = paleta_jut[["rojo"]])
       ) +
       ggplot2::scale_y_continuous(labels = ~paste0(round(., 1), "%")) +
       ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
       ggplot2::labs(x = NULL, y = "% del costo actualizado", color = NULL) +
-      theme_grd() +
+      theme_jut() +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1,
                                                           size = 8))
 
@@ -1024,9 +1035,9 @@ server <- function(input, output, session) {
       mapa <- mapa |>
         leaflet::addPolygons(
           data        = depto_sf,
-          fillColor   = paleta_grd[["azul"]],
+          fillColor   = paleta_jut[["azul"]],
           fillOpacity = 0.15,
-          color       = paleta_grd[["azul_osc"]],
+          color       = paleta_jut[["azul_osc"]],
           weight      = 1.5
         ) |>
         leaflet::fitBounds(

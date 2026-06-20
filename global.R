@@ -5,6 +5,7 @@
 # Los objetos quedan disponibles globalmente; el server solo los filtra.
 
 options(scipen = 999)
+options(shiny.useragg = TRUE)   # ragg honra la fuente Nunito Sans en renderPlot
 
 # --- Paquetes ------------------------------------------------------------------
 suppressPackageStartupMessages({
@@ -35,9 +36,13 @@ suppressPackageStartupMessages({
 })
 
 # --- Cargar módulos R/ ---------------------------------------------------------
-source(here::here("R/helpers.R"),  local = FALSE)
-source(here::here("R/datos.R"),    local = FALSE)
-source(here::here("R/exportar.R"), local = FALSE)
+source(here::here("R/helpers.R"),   local = FALSE)
+source(here::here("R/theme_jut.R"), local = FALSE)
+source(here::here("R/datos.R"),     local = FALSE)
+source(here::here("R/exportar.R"),  local = FALSE)
+
+# Tema gráfico por defecto de todos los ggplot de la app (marca "jut").
+ggplot2::theme_set(theme_jut())
 
 # --- Evaluar caché ANTES de cualquier descarga --------------------------------
 ruta_rds <- function(f) here::here("midputs", "rds", f)
@@ -261,20 +266,9 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     dplyr::count(des_tipologia, sort = TRUE) |>
     dplyr::pull(des_tipologia)
 
-  colores_alto_contraste <- c(
-    "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-    "#FF7F00", "#FFD92F", "#A65628", "#F781BF",
-    "#00CED1", "#1F78B4", "#6A3D9A", "#B15928"
-  )
-  colores_cola <- grDevices::gray.colors(
-    n     = max(0, length(tipologias_por_freq) - length(colores_alto_contraste)),
-    start = 0.5, end = 0.85
-  )
-  paleta_ordenada <- c(
-    colores_alto_contraste[seq_len(min(length(colores_alto_contraste),
-                                       length(tipologias_por_freq)))],
-    colores_cola
-  )
+  # Paleta de marca "jut": pasteles cualitativos para las tipologías más
+  # frecuentes + cola de grises para la larga (lo hace colores_jut).
+  paleta_ordenada <- colores_jut(length(tipologias_por_freq))
   pal_tipologia <- leaflet::colorFactor(
     palette  = paleta_ordenada,
     levels   = tipologias_por_freq,

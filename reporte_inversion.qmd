@@ -24,6 +24,7 @@ suppressPackageStartupMessages({
 })
 
 source(here::here("R/helpers.R"))
+source(here::here("R/theme_jut.R"))
 
 datos <- readRDS(params$datos_rds)
 inv   <- datos$inv
@@ -105,12 +106,13 @@ if (nrow(serie) > 0) {
                   ggplot2::aes(x = anio, y = Soles, color = Métrica)) +
     ggplot2::geom_line(linewidth = 0.9) +
     ggplot2::scale_color_manual(
-      values = c(PIA = "#1A9850", PIM = "#4393C3", Devengado = "#D6604D")
+      values = c(PIA = paleta_jut[["verde"]], PIM = paleta_jut[["azul"]],
+                 Devengado = paleta_jut[["rojo"]])
     ) +
     ggplot2::scale_y_continuous(labels = scales::label_comma()) +
     ggplot2::scale_x_continuous(breaks = scales::breaks_width(1)) +
     ggplot2::labs(x = NULL, y = "Soles acumulados", color = NULL) +
-    theme_grd() +
+    theme_jut() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 7))
 } else {
   cat("_Sin datos de serie temporal para esta inversión._")
