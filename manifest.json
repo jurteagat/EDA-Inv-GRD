@@ -721,14 +721,7 @@
         "Maintainer": "Carson Sievert <carson@posit.co>",
         "Repository": "CRAN",
         "Date/Publication": "2023-11-04 00:30:05 UTC",
-        "Built": "R 4.5.0; ; 2025-04-01 07:48:51 UTC; unix",
-        "RemoteType": "standard",
-        "RemoteRef": "bsicons",
-        "RemotePkgRef": "bsicons",
-        "RemoteRepos": "https://cran.rstudio.com",
-        "RemoteReposName": "CRAN",
-        "RemotePkgPlatform": "aarch64-apple-darwin20",
-        "RemoteSha": "0.1.2"
+        "Built": "R 4.5.0; ; 2025-04-01 07:48:51 UTC; unix"
       }
     },
     "bslib": {
@@ -4530,14 +4523,7 @@
         "Maintainer": "Christophe Dervieux <cderv@posit.co>",
         "Repository": "CRAN",
         "Date/Publication": "2025-09-04 15:30:02 UTC",
-        "Built": "R 4.5.0; ; 2025-09-05 05:43:19 UTC; unix",
-        "RemoteType": "standard",
-        "RemoteRef": "quarto",
-        "RemotePkgRef": "quarto",
-        "RemoteRepos": "https://cran.rstudio.com",
-        "RemoteReposName": "CRAN",
-        "RemotePkgPlatform": "aarch64-apple-darwin20",
-        "RemoteSha": "1.5.1"
+        "Built": "R 4.5.0; ; 2025-09-05 05:43:19 UTC; unix"
       }
     },
     "ragg": {
@@ -7138,68 +7124,44 @@
     }
   },
   "files": {
-    ".gitattributes": {
-      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
-    },
-    ".gitignore": {
-      "checksum": "d277c511d0fd3618ee00ecd18a6308e9"
-    },
-    ".Rprofile": {
-      "checksum": "030fceca42ccd3a25d6aae3cfaec6bb2"
-    },
-    "00_datos_entrada.qmd": {
-      "checksum": "ad6aa6a8482e10272017cb82adab20f7"
-    },
     "app.R": {
-      "checksum": "ba625f5da7861dcb70e848aa1f70ef94"
-    },
-    "CLAUDE.md": {
-      "checksum": "acb3bb5634abeeb0e98f566ea31a0dce"
-    },
-    "EDA_Inv_GRD_v1.qmd": {
-      "checksum": "219deb7bd2778913d0f02a80737aff4f"
-    },
-    "EDA-Inv-GRD.Rproj": {
-      "checksum": "c8d3f84a410f46d4d8b03a268e313e35"
+      "checksum": "e849ee10bd4b6541f89c1d5e5d46260c"
     },
     "global.R": {
-      "checksum": "884e5092e77759636b6b32400e978f08"
+      "checksum": "7d5c478bbb21b2f58ec6bced381b7a86"
+    },
+    "notebooks/reporte_inversion.qmd": {
+      "checksum": "8bfc2696c40bf91f902d1ab394920e13"
     },
     "R/datos.R": {
-      "checksum": "21e79c432300a39fda62fd6ecfaf1e44"
+      "checksum": "c6684e22cde8bffefc6e6bbeaf06a111"
     },
     "R/exportar.R": {
-      "checksum": "3a3cffc01e45fbfe07b7848a9e7dbd8a"
+      "checksum": "b117e695162c99c70b585d1552f93b0e"
     },
     "R/helpers.R": {
-      "checksum": "15c86762fc38f582876eb1d18ea790ef"
+      "checksum": "796936f8a8748b13e006006df9bd845c"
     },
-    "README.md": {
-      "checksum": "62e27ada9347b7b71017030fa8056410"
+    "R/theme_jut.R": {
+      "checksum": "cc64cf70054f90afc3cfaf2188b27100"
     },
     "renv.lock": {
       "checksum": "d669fbfe89b4ee420fd2c9469a5d0f1d"
     },
-    "reporte_inversion.qmd": {
-      "checksum": "8bbf169e8bd87304e2e8df9d8528d0ed"
+    "www/estilos-jut.css": {
+      "checksum": "8be07927acadc72c145371bb8329b427"
     },
-    "summarytools_white.css": {
-      "checksum": "72c9fb527873ce3e612b73d8c33da4c6"
+    "www/fonts/NunitoSans-Variable.ttf": {
+      "checksum": "5e09de486460147f8107f81d57c186e7"
     },
-    "tests/testthat.R": {
-      "checksum": "dd52b1990706fa75261e2e7eb20666a4"
+    "www/fonts/OFL-NunitoSans.txt": {
+      "checksum": "23d4d0303ede3add187dce33e45e74ba"
     },
-    "tests/testthat/test-app.R": {
-      "checksum": "05b85314051b7e274447d18aa774b899"
+    "www/icono-inv-grd7.svg": {
+      "checksum": "30bdb54776b76b24650760e4bd4601ad"
     },
-    "tests/testthat/test-datos.R": {
-      "checksum": "118677c45d2145cce119590bc1e2908b"
-    },
-    "tests/testthat/test-exportar.R": {
-      "checksum": "eba71a928bfc2c99daf220d310a959fb"
-    },
-    "tests/testthat/test-helpers.R": {
-      "checksum": "3fbc10c5428d9bb56d85d81db53e1e01"
+    "www/icono-jut.svg": {
+      "checksum": "8f874b74831befde93b2f7094bcf43d9"
     }
   },
   "users": null

@@ -50,7 +50,7 @@ join_nombres_abreviados <- function(df, ruta_csv) {
 
 #' Ruta canónica del archivo de caché de arranque.
 ruta_cache_app <- function() {
-  here::here("midputs", "rds", "_cache_app.rds")
+  here::here("data", "processed", "_cache_app.rds")
 }
 
 #' Devuelve TRUE si la caché existe y ninguna fuente *existente* es más nueva.

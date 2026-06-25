@@ -4,8 +4,8 @@
 .Ruserdata
 folder_xyz_ignore/
 
-# Directorio de datos crudos completo (archivos grandes de MEF/Drive)
-raw/
+# Directorio de datos (crudos + procesados); archivos grandes de MEF/Drive
+data/
 
 # Extensiones de datos — ignoradas en todo el repo
 *.csv

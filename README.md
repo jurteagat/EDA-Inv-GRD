@@ -12,9 +12,6 @@ La selección de inversiones GRD no se limita al programa *Gestión de Riesgos y
 
 ```
 EDA-Inv-GRD/
-├── EDA_Inv_GRD_v1.qmd      # Cuaderno EDA principal (consume midputs/rds/)
-├── 00_datos_entrada.qmd    # Preparación de datos (crudos → RDS → Drive)
-├── reporte_inversion.qmd   # Plantilla Typst para el reporte PDF por inversión
 ├── app.R                   # Dashboard Shiny (UI bslib + server reactivo)
 ├── global.R                # Precarga, pipeline y caché de arranque de la app
 ├── R/                      # Funciones puras testeables
@@ -22,10 +19,15 @@ EDA-Inv-GRD/
 │   ├── theme_jut.R         #   sistema de estilo visual "jut" (paletas, theme_jut)
 │   ├── datos.R             #   descargas Drive, pipeline, caché
 │   └── exportar.R          #   exportaciones CSV/GPKG/PDF
+├── notebooks/              # Cuadernos Quarto
+│   ├── EDA_Inv_GRD_v1.qmd  #   Cuaderno EDA principal (consume data/processed/)
+│   ├── 00_datos_entrada.qmd#   Preparación de datos (crudos → RDS → Drive)
+│   └── reporte_inversion.qmd #   Plantilla Typst para el reporte PDF por inversión
 ├── www/                    # Assets del estilo: estilos-jut.css, fonts/, iconos (logo + favicon)
 ├── tests/testthat/         # Tests unitarios + shinytest2
-├── midputs/rds/            # Datos intermedios .rds (descargados de Drive)
-├── raw/                    # Crudos del MEF (no editar, no rastreados)
+├── data/
+│   ├── processed/          # Datos intermedios .rds (descargados de Drive)
+│   └── raw/                # Crudos del MEF (no editar, no rastreados)
 ├── manifest.json           # Despliegue en Posit Connect
 ├── renv/ · renv.lock       # Entorno reproducible (R 4.5.3)
 └── CLAUDE.md               # Guía detallada del proyecto (local, no rastreada)
@@ -50,7 +52,7 @@ EDA-Inv-GRD/
 Rscript -e 'renv::restore()'
 
 # Renderizar el cuaderno EDA a HTML autocontenido
-quarto render EDA_Inv_GRD_v1.qmd
+quarto render notebooks/EDA_Inv_GRD_v1.qmd
 
 # Lanzar el dashboard Shiny
 Rscript -e 'shiny::runApp()'
@@ -66,23 +68,23 @@ Rscript -e 'testthat::test_dir("tests/testthat")'
 
 ## Datos
 
-Tanto el cuaderno EDA como el dashboard leen los `.rds` ya preparados desde `midputs/rds/`. Si faltan, `descargar_si_falta()` los baja automáticamente desde Google Drive (archivos públicos, sin OAuth); los IDs viven en `DRIVE_IDS` (`R/datos.R`).
+Tanto el cuaderno EDA como el dashboard leen los `.rds` ya preparados desde `data/processed/`. Si faltan, `descargar_si_falta()` los baja automáticamente desde Google Drive (archivos públicos, sin OAuth); los IDs viven en `DRIVE_IDS` (`R/datos.R`).
 
 La preparación de datos es opcional y vive en `00_datos_entrada.qmd`, que trabaja en dos modos según el param `leer_desde_local`:
 
-- `TRUE` → **modo actualización**: descarga los crudos del MEF a `raw/`, los convierte a `.rds` y (opcionalmente) los sube a Drive.
+- `TRUE` → **modo actualización**: descarga los crudos del MEF a `data/raw/`, los convierte a `.rds` y (opcionalmente) los sube a Drive.
 - `FALSE` → **modo consumo** (default): baja los `.rds` ya preparados desde Drive. No requiere OAuth.
 
 ---
 
 ## Dashboard Shiny
 
-Versión interactiva del cuaderno con filtros de tipología, departamento, situación, **IOARR/emergencia** (por defecto en "NO") y tipo de inversión. Comparte los mismos `.rds` de `midputs/rds/`.
+Versión interactiva del cuaderno con filtros de tipología, departamento, situación, **IOARR/emergencia** (por defecto en "NO") y tipo de inversión. Comparte los mismos `.rds` de `data/processed/`.
 
 **Pestañas:** Resumen · Mapa · Distribuciones · Departamentos · Inversión Seleccionada · Ficha Técnica.
 
 - La lógica está extraída en funciones puras en `R/` (testeadas con `testthat` + `shinytest2`).
-- En el primer arranque, `global.R` ejecuta el pipeline completo y guarda una **caché** (`midputs/rds/_cache_app.rds`, no rastreada). Para forzar su reconstrucción: `GRD_REBUILD_CACHE=1 Rscript -e 'source("global.R")'`.
+- En el primer arranque, `global.R` ejecuta el pipeline completo y guarda una **caché** (`data/processed/_cache_app.rds`, no rastreada). Para forzar su reconstrucción: `GRD_REBUILD_CACHE=1 Rscript -e 'source("global.R")'`.
 - Exporta los datos filtrados a **CSV** (geo y temporal), **GeoPackage** y un **reporte PDF** por inversión (Typst vía `reporte_inversion.qmd`).
 - **Estilo visual "jut"** (Bootswatch Lux + Nunito Sans + tema ggplot BBC-minimal): definido en `R/theme_jut.R` y `www/`. Navbar oscuro y compacto con logo, value boxes en progresión azul, paletas de marca y favicon.
 - Desplegable en **Posit Connect** (`manifest.json`), donde la caché se reconstruye descargando desde Drive.

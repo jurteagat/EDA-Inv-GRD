@@ -4,7 +4,7 @@
 # Los datos se precomputan en global.R; aquí solo se filtran reactivamente.
 
 # Primer uso — calentar la caché desde la consola (solo una vez):
-#   Rscript -e 'source("global.R")'   # ~11 s; escribe midputs/rds/_cache_app.rds
+#   Rscript -e 'source("global.R")'   # ~11 s; escribe data/processed/_cache_app.rds
 #   A partir de ahí el botón "Run App" en VS Code arranca en ~1-2 s. Para forzar rebuild:
 #   GRD_REBUILD_CACHE=1 Rscript -e 'source("global.R")'.
 

@@ -38,7 +38,9 @@ params:
 if (!exists("params")) {
   # Lee los params del YAML de este mismo archivo. Si renombras el cuaderno,
   # actualiza también el nombre en la línea siguiente.
-  params <- rmarkdown::yaml_front_matter("00_datos_entrada.qmd")$params
+  params <- rmarkdown::yaml_front_matter(
+    here::here("notebooks", "00_datos_entrada.qmd")
+  )$params
 }
 ```
 
@@ -50,14 +52,14 @@ inversiones GRD. Trabaja en **dos modos**, controlados por el parámetro
 `leer_desde_local`:
 
 - **`leer_desde_local = TRUE` → modo actualización (desde fuentes oficiales).**
-  Descarga los datos crudos de MEF a `raw/` (Sección 1, Opción A), los
-  convierte a `.rds` en `midputs/rds/` (Sección 2) y —si
+  Descarga los datos crudos de MEF a `data/raw/` (Sección 1, Opción A), los
+  convierte a `.rds` en `data/processed/` (Sección 2) y —si
   `subir_a_drive = TRUE`— los sube a Google Drive (Sección 3).
   *Nota: pese a su nombre, en este modo el cuaderno sí descarga de internet;
   "local" alude a que la conversión a `.rds` parte de los archivos crudos
-  que quedan en `raw/`.*
+  que quedan en `data/raw/`.*
 - **`leer_desde_local = FALSE` → modo consumo (desde Drive).**
-  Baja los `.rds` ya preparados desde Google Drive a `midputs/rds/`
+  Baja los `.rds` ya preparados desde Google Drive a `data/processed/`
   (Sección 1, Opción B). No toca MEF ni vuelve a convertir nada. Es el modo
   que usa el cuaderno EDA.
 
@@ -66,7 +68,7 @@ chunk, cada chunk verifica `leer_desde_local` en su cuerpo, así que nunca se
 pisan aunque ejecutes los chunks a mano en Positron (donde `eval` se ignora).
 
 El cuaderno EDA principal (`EDA_Inv_GRD_v1.qmd`) siempre lee desde
-`midputs/rds/` y no depende de las fuentes originales.
+`data/processed/` y no depende de las fuentes originales.
 
 ## Qué hacer según el caso
 
@@ -81,7 +83,7 @@ Hay dos formas equivalentes:
   de la sesión interactiva, que es donde mejor funciona.
 - *Desatendido desde terminal (macOS).*
   ```bash
-  quarto render 00_datos_entrada.qmd \
+  quarto render notebooks/00_datos_entrada.qmd \
     -P leer_desde_local:true \
     -P subir_a_drive:true
   ```
@@ -92,7 +94,7 @@ Hay dos formas equivalentes:
 **B) Solo preparar los `.rds` para el EDA** (sin tocar MEF, bajando de Drive):
 
 ```bash
-quarto render 00_datos_entrada.qmd -P leer_desde_local:false
+quarto render notebooks/00_datos_entrada.qmd -P leer_desde_local:false
 ```
 
 o simplemente deja `leer_desde_local: false` en el YAML (es el valor por
@@ -105,8 +107,8 @@ defecto). No necesita OAuth: los archivos de Drive son públicos.
 ```{r opciones-usuario}
 # Muestra la configuración activa (los parámetros vienen del YAML o de -P en terminal).
 # Para cambiarlos sin abrir RStudio, usa:
-#   quarto render 00_datos_entrada.qmd -P leer_desde_local:false
-#   quarto render 00_datos_entrada.qmd -P leer_desde_local:true -P subir_a_drive:true
+#   quarto render notebooks/00_datos_entrada.qmd -P leer_desde_local:false
+#   quarto render notebooks/00_datos_entrada.qmd -P leer_desde_local:true -P subir_a_drive:true
 
 cat("=== Configuración activa ===\n")
 cat("leer_desde_local :", params$leer_desde_local, "\n")
@@ -142,9 +144,8 @@ if (!require("esri2sf", quietly = TRUE))
   remotes::install_github("elipousson/esri2sf")
 
 # Asegura que las carpetas existen (idempotente).
-dir.create(here::here("raw"),             showWarnings = FALSE, recursive = TRUE)
-dir.create(here::here("midputs"),         showWarnings = FALSE, recursive = TRUE)
-dir.create(here::here("midputs", "rds"), showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("data", "raw"),       showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("data", "processed"), showWarnings = FALSE, recursive = TRUE)
 ```
 
 ---
@@ -154,8 +155,8 @@ dir.create(here::here("midputs", "rds"), showWarnings = FALSE, recursive = TRUE)
 ## Opción A: fuentes oficiales MEF (modo actualización)
 
 *Estos bloques corren solo cuando `leer_desde_local = TRUE`. Descargan los
-crudos de MEF a `raw/`; en caso de fallo de red, recurren al archivo más
-reciente ya presente en `raw/`.*
+crudos de MEF a `data/raw/`; en caso de fallo de red, recurren al archivo más
+reciente ya presente en `data/raw/`.*
 
 ```{r s1-resolver-rutas, eval = params$leer_desde_local}
 # Guarda en el cuerpo: la opción `eval` solo se respeta bajo `quarto render`.
@@ -189,7 +190,7 @@ if (isTRUE(params$leer_desde_local)) {
   }
 
   # Conserva solo `conservar` y elimina las demás versiones que coincidan con
-  # `patron` en `dir`. Deja raw/ con una sola versión por fuente. No hace nada si
+  # `patron` en `dir`. Deja data/raw/ con una sola versión por fuente. No hace nada si
   # `conservar` es NULL o no existe (p. ej. tras un fallo de descarga sin local).
   purgar_versiones_antiguas <- function(dir, patron, conservar) {
     if (is.null(conservar) || !file.exists(conservar)) return(invisible(NULL))
@@ -198,7 +199,7 @@ if (isTRUE(params$leer_desde_local)) {
     if (length(obsoletos)) {
       file.remove(obsoletos)
       message(glue::glue(
-        "raw/: eliminada(s) {length(obsoletos)} versión(es) antigua(s); ",
+        "data/raw/: eliminada(s) {length(obsoletos)} versión(es) antigua(s); ",
         "conservada {basename(conservar)}."
       ))
     }
@@ -216,7 +217,7 @@ if (isTRUE(params$leer_desde_local)) {
   # --- Detalle de inversiones ------------------------------------------------
   if (params$descargar_det_inv) {
     ruta_det_inv <- here::here(
-      "raw", glue::glue("DETALLE_INVERSIONES_{fecha_sufijo}.csv")
+      "data", "raw", glue::glue("DETALLE_INVERSIONES_{fecha_sufijo}.csv")
     )
     old_timeout <- getOption("timeout")
     options(timeout = 1800)  # 30 min; el CSV puede pesar ~388 MB
@@ -226,22 +227,22 @@ if (isTRUE(params$leer_desde_local)) {
     }, error = function(e) {
       message("Fallo la descarga: ", conditionMessage(e), " — usando local.")
       ruta_det_inv <<- ruta_mas_reciente(
-        here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
+        here::here("data", "raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
       )
     })
     options(timeout = old_timeout)
   } else {
     ruta_det_inv <- ruta_mas_reciente(
-      here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
+      here::here("data", "raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$"
     )
   }
   message("Ruta det_inv: ", ruta_det_inv)
-  purgar_versiones_antiguas(here::here("raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$", ruta_det_inv)
+  purgar_versiones_antiguas(here::here("data", "raw"), "^DETALLE_INVERSIONES_\\d{8}\\.csv$", ruta_det_inv)
 
   # --- Diccionario de variables ----------------------------------------------
   if (params$descargar_diccionario) {
     ruta_diccionario <- here::here(
-      "raw", glue::glue("Detalle_Inversiones_Diccionario_{fecha_sufijo}.csv")
+      "data", "raw", glue::glue("Detalle_Inversiones_Diccionario_{fecha_sufijo}.csv")
     )
     old_timeout <- getOption("timeout")
     options(timeout = 1800)
@@ -252,22 +253,22 @@ if (isTRUE(params$leer_desde_local)) {
       message("Fallo la descarga del diccionario: ", conditionMessage(e),
               " — usando local.")
       ruta_diccionario <<- ruta_mas_reciente(
-        here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
+        here::here("data", "raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
       )
     })
     options(timeout = old_timeout)
   } else {
     ruta_diccionario <- ruta_mas_reciente(
-      here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
+      here::here("data", "raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$"
     )
   }
   message("Ruta diccionario: ", ruta_diccionario)
-  purgar_versiones_antiguas(here::here("raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$", ruta_diccionario)
+  purgar_versiones_antiguas(here::here("data", "raw"), "^Detalle_Inversiones_Diccionario_\\d{8}\\.csv$", ruta_diccionario)
 
   # --- Capa ESRI de puntos georreferenciados ---------------------------------
   if (params$descargar_gpkg) {
     ruta_gpkg <- here::here(
-      "raw", glue::glue("df_pu_geoinv_inv_g_{fecha_sufijo}.gpkg")
+      "data", "raw", glue::glue("df_pu_geoinv_inv_g_{fecha_sufijo}.gpkg")
     )
     old_timeout <- getOption("timeout")
     options(timeout = 1800)  # esri2sf hace múltiples peticiones HTTP
@@ -279,7 +280,7 @@ if (isTRUE(params$leer_desde_local)) {
     }, error = function(e) {
       message("Fallo esri2sf: ", conditionMessage(e), " — usando local.")
       gpkg_cands <- list.files(
-        here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
+        here::here("data", "raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
         full.names = TRUE
       )
       ruta_gpkg <<- if (length(gpkg_cands) > 0L)
@@ -288,7 +289,7 @@ if (isTRUE(params$leer_desde_local)) {
     options(timeout = old_timeout)
   } else {
     gpkg_cands <- list.files(
-      here::here("raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
+      here::here("data", "raw"), pattern = "^df_pu_geoinv.*\\.gpkg$",
       full.names = TRUE
     )
     ruta_gpkg <- if (length(gpkg_cands) > 0L) {
@@ -298,10 +299,10 @@ if (isTRUE(params$leer_desde_local)) {
     }
   }
   message("Ruta gpkg: ", ruta_gpkg)
-  purgar_versiones_antiguas(here::here("raw"), "^df_pu_geoinv.*\\.gpkg$", ruta_gpkg)
+  purgar_versiones_antiguas(here::here("data", "raw"), "^df_pu_geoinv.*\\.gpkg$", ruta_gpkg)
 
-  # --- Serie de tiempo (siempre local en midputs/) ---------------------------
-  ruta_grd_12_25 <- here::here("midputs", "grd_2012_2025_t.csv")
+  # --- Serie de tiempo (siempre local en data/processed/) --------------------
+  ruta_grd_12_25 <- here::here("data", "processed", "grd_2012_2025_t.csv")
 
   # Reporta las rutas resueltas y las fechas inferidas de los nombres.
   fecha_archivo <- function(ruta) {
@@ -330,7 +331,7 @@ if (isTRUE(params$leer_desde_local)) {
 ## Opción B: Google Drive (modo consumo)
 
 *Este bloque corre solo cuando `leer_desde_local = FALSE`. Descarga los
-archivos `.rds` ya preparados directamente a `midputs/rds/`. Es la ruta que
+archivos `.rds` ya preparados directamente a `data/processed/`. Es la ruta que
 deja todo listo para el cuaderno EDA.*
 
 `drive_deauth()` desactiva la autenticación OAuth para que la descarga
@@ -350,7 +351,7 @@ if (isTRUE(params$leer_desde_local)) {
   # httr::timeout() controla el timeout de googledrive (distinto de options(timeout)).
   # httr::with_config() lo aplica solo durante la descarga y restaura el valor anterior.
   descargar_rds_drive <- function(id, nombre_local) {
-    ruta <- here::here("midputs", "rds", nombre_local)
+    ruta <- here::here("data", "processed",nombre_local)
     message(glue::glue("Descargando {nombre_local} desde Google Drive ..."))
     httr::with_config(
       httr::timeout(1800),
@@ -380,7 +381,7 @@ if (isTRUE(params$leer_desde_local)) {
     message("gdrive_id_nombres_abrev vacío: omito descarga de nombres abreviados.")
   }
 
-  message("Descarga completada. El cuaderno EDA ya puede leer desde midputs/rds/.")
+  message("Descarga completada. El cuaderno EDA ya puede leer desde data/processed/.")
 }
 ```
 
@@ -390,7 +391,7 @@ if (isTRUE(params$leer_desde_local)) {
 
 *Solo corre cuando `leer_desde_local = TRUE`. Lee cada fuente cruda en
 su totalidad (sin filtrar columnas) y la guarda como `.rds` en
-`midputs/rds/`. Los archivos tienen nombre fijo para que Google Drive
+`data/processed/`. Los archivos tienen nombre fijo para que Google Drive
 pueda reemplazarlos sin cambiar el ID del enlace compartido.*
 
 El formato `.rds` comprime bien y `readRDS()` es ~10× más rápido que
@@ -402,8 +403,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_det_inv_full <- data.table::fread(ruta_det_inv, encoding = "UTF-8")
   cat("Dimensiones det_inv:", dim(df_det_inv_full), "\n")
 
-  saveRDS(df_det_inv_full, here::here("midputs", "rds", "det_inv.rds"))
-  message("Guardado: midputs/rds/det_inv.rds")
+  saveRDS(df_det_inv_full, here::here("data", "processed","det_inv.rds"))
+  message("Guardado: data/processed/det_inv.rds")
   rm(df_det_inv_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -416,8 +417,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_diccionario_full <- data.table::fread(ruta_diccionario, encoding = "UTF-8")
   cat("Dimensiones diccionario:", dim(df_diccionario_full), "\n")
 
-  saveRDS(df_diccionario_full, here::here("midputs", "rds", "diccionario.rds"))
-  message("Guardado: midputs/rds/diccionario.rds")
+  saveRDS(df_diccionario_full, here::here("data", "processed","diccionario.rds"))
+  message("Guardado: data/processed/diccionario.rds")
   rm(df_diccionario_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -430,8 +431,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_geoinv_full <- sf::st_read(ruta_gpkg, quiet = FALSE)
   cat("Dimensiones geoinv:", dim(df_geoinv_full), "\n")
 
-  saveRDS(df_geoinv_full, here::here("midputs", "rds", "geoinv.rds"))
-  message("Guardado: midputs/rds/geoinv.rds")
+  saveRDS(df_geoinv_full, here::here("data", "processed","geoinv.rds"))
+  message("Guardado: data/processed/geoinv.rds")
   rm(df_geoinv_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -444,8 +445,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_grd_full <- data.table::fread(ruta_grd_12_25, encoding = "UTF-8")
   cat("Dimensiones grd_2012_25:", dim(df_grd_full), "\n")
 
-  saveRDS(df_grd_full, here::here("midputs", "rds", "grd_2012_25.rds"))
-  message("Guardado: midputs/rds/grd_2012_25.rds")
+  saveRDS(df_grd_full, here::here("data", "processed","grd_2012_25.rds"))
+  message("Guardado: data/processed/grd_2012_25.rds")
   rm(df_grd_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -465,7 +466,7 @@ if (isTRUE(params$leer_desde_local)) {
   stopifnot(all(c("codigo_unico", "nom_inv_corto") %in% names(df_nombres)))
   df_nombres <- df_nombres[, .(codigo_unico = as.character(codigo_unico),
                                nom_inv_corto = as.character(nom_inv_corto))]
-  data.table::fwrite(df_nombres, here::here("midputs", "rds", "nombres_abreviados.csv"))
+  data.table::fwrite(df_nombres, here::here("data", "processed","nombres_abreviados.csv"))
   cat("nombres_abreviados:", nrow(df_nombres), "filas;",
       sum(!is.na(df_nombres$nom_inv_corto) & df_nombres$nom_inv_corto != ""),
       "con nombre corto\n")
@@ -479,7 +480,7 @@ if (isTRUE(params$leer_desde_local)) {
   # Confirma que los archivos existen y muestra su tamaño.
   rds_esperados <- c("det_inv.rds", "diccionario.rds", "geoinv.rds", "grd_2012_25.rds",
                      "nombres_abreviados.csv")
-  rutas_rds     <- here::here("midputs", "rds", rds_esperados)
+  rutas_rds     <- here::here("data", "processed",rds_esperados)
   existe        <- file.exists(rutas_rds)
   tamanos_mb    <- round(file.size(rutas_rds) / 1024^2, 1)
 
@@ -518,7 +519,7 @@ if (isTRUE(params$leer_desde_local)) {
     fecha_registro  = format(Sys.Date(), "%Y-%m-%d")
   )
 
-  ruta_fechas_csv <- here::here("midputs", "rds", "fechas_fuentes.csv")
+  ruta_fechas_csv <- here::here("data", "processed","fechas_fuentes.csv")
   data.table::fwrite(fechas_fuentes, ruta_fechas_csv)
   message(glue::glue("CSV de fechas guardado en: {ruta_fechas_csv}"))
   print(fechas_fuentes)
@@ -545,14 +546,14 @@ actualización semanal.
 
 ```{r s3-subir-drive, eval = params$leer_desde_local && params$subir_a_drive}
 # Solo corre cuando leer_desde_local = TRUE Y subir_a_drive = TRUE.
-# Desde terminal: quarto render 00_datos_entrada.qmd -P subir_a_drive:true
+# Desde terminal: quarto render notebooks/00_datos_entrada.qmd -P subir_a_drive:true
 # El token OAuth queda cacheado en ~/.cache/gargle tras la primera sesión interactiva.
 if (isTRUE(params$leer_desde_local) && isTRUE(params$subir_a_drive)) {
 
   googledrive::drive_auth()  # abre el navegador la primera vez por sesión
 
   subir_rds_drive <- function(id, nombre_local) {
-    ruta <- here::here("midputs", "rds", nombre_local)
+    ruta <- here::here("data", "processed",nombre_local)
     if (!file.exists(ruta)) {
       message(glue::glue("AVISO: no existe {ruta}, omitiendo."))
       return(invisible(NULL))

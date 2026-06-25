@@ -34,7 +34,7 @@ exportar_csv_temporal <- function(df, ruta_destino) {
 #' Renderiza el reporte PDF de una inversión específica via Quarto + Typst.
 #' Devuelve la ruta del PDF generado.
 renderizar_reporte_pdf <- function(codigo, datos_inv, datos_serie,
-                                   qmd_path = here::here("reporte_inversion.qmd")) {
+                                   qmd_path = here::here("notebooks", "reporte_inversion.qmd")) {
   tmp_dir   <- tempdir()
   rds_path  <- file.path(tmp_dir, glue::glue("inv_{codigo}.rds"))
   pdf_path  <- file.path(tmp_dir, glue::glue("reporte_{codigo}.pdf"))

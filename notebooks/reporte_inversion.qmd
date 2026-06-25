@@ -124,7 +124,7 @@ if (nrow(serie) > 0) {
 ## Ubicación
 
 ```{r ubicacion, echo=FALSE, fig.width=5, fig.height=4}
-ruta_deptos <- here::here("midputs", "rds", "deptos_geo.rds")
+ruta_deptos <- here::here("data", "processed", "deptos_geo.rds")
 coords_sf   <- tryCatch(sf::st_coordinates(inv), error = function(e) NULL)
 
 if (!is.null(coords_sf) && nrow(coords_sf) > 0) {

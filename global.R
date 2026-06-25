@@ -45,7 +45,7 @@ source(here::here("R/exportar.R"),  local = FALSE)
 ggplot2::theme_set(theme_jut())
 
 # --- Evaluar caché ANTES de cualquier descarga --------------------------------
-ruta_rds <- function(f) here::here("midputs", "rds", f)
+ruta_rds <- function(f) here::here("data", "processed", f)
 
 .ruta_cache <- ruta_cache_app()
 
@@ -56,7 +56,7 @@ ruta_rds <- function(f) here::here("midputs", "rds", f)
   ruta_rds("grd_2012_25.rds"),
   ruta_rds("nombres_abreviados.csv"),
   ruta_rds("deptos_geo.rds"),
-  here::here("midputs", "rds", "fechas_fuentes.csv"),
+  here::here("data", "processed", "fechas_fuentes.csv"),
   list.files(here::here("R"), pattern = "\\.R$", full.names = TRUE),
   here::here("global.R")
 )
@@ -87,7 +87,7 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   if (!file.exists(ruta_rds("deptos_geo.rds"))) {
     message("Generando deptos_geo.rds desde Drive…")
     preparar_deptos_geo(
-      ruta_descarga = here::here("raw", "deptos_shp.zip"),
+      ruta_descarga = here::here("data", "raw", "deptos_shp.zip"),
       ruta_rds      = ruta_rds("deptos_geo.rds")
     )
   }

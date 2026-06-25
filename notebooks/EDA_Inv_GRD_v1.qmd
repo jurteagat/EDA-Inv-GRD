@@ -33,8 +33,10 @@ params:
 # dado que positron tiene problemas al ejecutar los chuncks.
 
 if (!exists("params")) {
-  # Asegúrate de cambiar "mi_reporte.qmd" por el nombre exacto de tu archivo
-  params <- rmarkdown::yaml_front_matter("EDA_Inv_GRD_v1.qmd")$params
+  # Asegúrate de cambiar el nombre por el exacto de tu archivo si lo renombras.
+  params <- rmarkdown::yaml_front_matter(
+    here::here("notebooks", "EDA_Inv_GRD_v1.qmd")
+  )$params
 }
 
 params
@@ -51,7 +53,7 @@ Riesgos y Emergencias* registrado en INVIERTE.PE del Ministerio de Economía y F
 2. **`df_pu_geoinv_inv_g`** — Puntos georreferenciados de inversiones
    (portal GeoInvierte del MEF).
 3. **`df_grd_2012_25`** — Serie de tiempo de ejecución de gasto
-   2012-2025 (archivo interno en `midputs/`), extendida a 2026 con el
+   2012-2025 (archivo interno en `data/processed/`), extendida a 2026 con el
    detalle de inversiones.
 
 El cuaderno está escrito didácticamente: cada paso va
@@ -66,7 +68,7 @@ para que el lector obtenga una imagen realista del proceso.
 ## Fecha de los datos de entrada
 
 ```{r fechas-fuentes}
-ruta_fechas <- here::here("midputs", "rds", "fechas_fuentes.csv")
+ruta_fechas <- here::here("data", "processed","fechas_fuentes.csv")
 if (file.exists(ruta_fechas)) {
   fechas_fuentes <- data.table::fread(ruta_fechas)
   fecha_mas_reciente <- format(
@@ -102,7 +104,7 @@ codigo_inv_foco <- "2508148"
 
 # ==============================================
 # Los archivos de entrada se preparan con 00_datos_entrada.qmd y
-# quedan disponibles en midputs/rds/ antes de ejecutar este cuaderno.
+# quedan disponibles en data/processed/ antes de ejecutar este cuaderno.
 ```
 
 ## Paquetes
@@ -147,25 +149,24 @@ library(summarytools)
 summarytools::st_options(
   plain.ascii = FALSE,
   style       = "grid",
-  custom.css  = here::here("summarytools_white.css")
+  custom.css  = here::here("notebooks", "summarytools_white.css")
 )
 library(glue)
 library(readxl)
 
 # Asegura que las carpetas del proyecto existen (idempotente).
-dir.create(here::here("raw"),             showWarnings = FALSE, recursive = TRUE)
-dir.create(here::here("midputs"),         showWarnings = FALSE, recursive = TRUE)
-dir.create(here::here("midputs", "rds"), showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("data", "raw"),       showWarnings = FALSE, recursive = TRUE)
+dir.create(here::here("data", "processed"), showWarnings = FALSE, recursive = TRUE)
 ```
 
 ```{r preparar-datos, eval = params$preparar_datos}
 # Llama al cuaderno de gestión de datos antes de continuar con el EDA.
 # Activar desde terminal:
-#   quarto render EDA_Inv_GRD_v1.qmd -P preparar_datos:true
-#   quarto render EDA_Inv_GRD_v1.qmd -P preparar_datos:true -P datos_leer_desde_local:false
+#   quarto render notebooks/EDA_Inv_GRD_v1.qmd -P preparar_datos:true
+#   quarto render notebooks/EDA_Inv_GRD_v1.qmd -P preparar_datos:true -P datos_leer_desde_local:false
 message("Preparando datos de entrada (00_datos_entrada.qmd) ...")
 quarto::quarto_render(
-  input          = here::here("00_datos_entrada.qmd"),
+  input          = here::here("notebooks", "00_datos_entrada.qmd"),
   execute_params = list(leer_desde_local = params$datos_leer_desde_local)
 )
 message("Datos listos. Continuando con el EDA ...")
@@ -269,13 +270,13 @@ label_var <- function(vars) {
 ## Diccionario oficial de la fuente
 
 Mostramos primero el diccionario oficial del MEF **tal cual** llega de la
-fuente de datos abiertos (`midputs/rds/diccionario.rds`). Sirve de
+fuente de datos abiertos (`data/processed/diccionario.rds`). Sirve de
 referencia para ajustar luego las definiciones locales: cualquier
 definición que escribamos a mano puede contrastarse con la descripción
 oficial de esta tabla.
 
 ```{r diccionario-oficial}
-ruta_dicc_rds <- here::here("midputs", "rds", "diccionario.rds")
+ruta_dicc_rds <- here::here("data", "processed","diccionario.rds")
 dicc_oficial <- tryCatch(
   if (file.exists(ruta_dicc_rds)) {
     data.table::as.data.table(readRDS(ruta_dicc_rds))
@@ -303,7 +304,7 @@ if (!is.null(dicc_oficial)) {
 
 ## Diccionario actualizado
 
-Cargamos el diccionario oficial del MEF desde `midputs/rds/diccionario.rds`
+Cargamos el diccionario oficial del MEF desde `data/processed/diccionario.rds`
 y lo cruzamos con todas las variables del análisis definidas en
 `nombres_comunes`. Si alguna columna proviene de la capa ESRI o fue
 generada en el procesamiento, aportamos la definición local.
@@ -312,7 +313,7 @@ generada en el procesamiento, aportamos la definición local.
 # Reutiliza dicc_oficial ya cargado en el chunk anterior; solo lo lee de
 # nuevo si por algún motivo no existe (ejecución aislada de este chunk).
 if (!exists("dicc_oficial")) {
-  ruta_dicc_rds <- here::here("midputs", "rds", "diccionario.rds")
+  ruta_dicc_rds <- here::here("data", "processed","diccionario.rds")
   dicc_oficial <- tryCatch(
     if (file.exists(ruta_dicc_rds)) {
       data.table::as.data.table(readRDS(ruta_dicc_rds))
@@ -368,7 +369,7 @@ DT::datatable(
 # Carga de los datos de entrada
 
 Los archivos de entrada se preparan en `00_datos_entrada.qmd` y
-quedan disponibles como `.rds` en `midputs/rds/`. Ejecuta ese
+quedan disponibles como `.rds` en `data/processed/`. Ejecuta ese
 cuaderno antes de correr este si es la primera vez o si hay datos
 nuevos.
 
@@ -394,7 +395,7 @@ cols_det_inv <- c(
 cols_det_inv_lower <- janitor::make_clean_names(cols_det_inv)
 
 df_det_inv <- data.table::as.data.table(
-  readRDS(here::here("midputs", "rds", "det_inv.rds"))
+  readRDS(here::here("data", "processed","det_inv.rds"))
 )
 data.table::setnames(df_det_inv, janitor::make_clean_names(names(df_det_inv)))
 df_det_inv <- df_det_inv[, ..cols_det_inv_lower]
@@ -406,7 +407,7 @@ df_det_inv[, ubigeo := stringr::str_pad(as.character(ubigeo), width = 6,
                                         side = "left", pad = "0")]
 
 df_nombres_abrev <- data.table::fread(
-  here::here("midputs", "rds", "nombres_abreviados.csv"),
+  here::here("data", "processed","nombres_abreviados.csv"),
   colClasses = c(codigo_unico = "character")
 )
 df_det_inv <- merge(df_det_inv, df_nombres_abrev, by = "codigo_unico", all.x = TRUE)
@@ -421,7 +422,7 @@ cat("df_det_inv dimensiones:", dim(df_det_inv), "\n")
 ## Lectura del geopackage
 
 ```{r leer-gpkg}
-df_pu_geoinv_inv_g <- readRDS(here::here("midputs", "rds", "geoinv.rds"))
+df_pu_geoinv_inv_g <- readRDS(here::here("data", "processed","geoinv.rds"))
 local({
   n <- janitor::make_clean_names(names(df_pu_geoinv_inv_g))
   n[n == "cod_unico"]     <- "codigo_unico"
@@ -445,7 +446,7 @@ cols_grd_12_25 <- c(
 cols_grd_12_25_lower <- janitor::make_clean_names(cols_grd_12_25)
 
 df_grd_2012_25 <- data.table::as.data.table(
-  readRDS(here::here("midputs", "rds", "grd_2012_25.rds"))
+  readRDS(here::here("data", "processed","grd_2012_25.rds"))
 )
 data.table::setnames(df_grd_2012_25, janitor::make_clean_names(names(df_grd_2012_25)))
 df_grd_2012_25 <- df_grd_2012_25[, ..cols_grd_12_25_lower] # [POR REVISAR]

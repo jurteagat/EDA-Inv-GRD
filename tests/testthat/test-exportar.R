@@ -63,7 +63,7 @@ test_that("renderizar_reporte_pdf produce un PDF no vacío", {
   testthat::skip_on_cran()
   testthat::skip_if_not(quarto::quarto_available(), "Quarto no disponible")
   testthat::skip_if_not(
-    file.exists(here::here("reporte_inversion.qmd")),
+    file.exists(here::here("notebooks", "reporte_inversion.qmd")),
     "reporte_inversion.qmd no existe"
   )
 
@@ -79,7 +79,7 @@ test_that("renderizar_reporte_pdf produce un PDF no vacío", {
     codigo    = "001",
     datos_inv = sf_inv,
     datos_serie = serie,
-    qmd_path  = here::here("reporte_inversion.qmd")
+    qmd_path  = here::here("notebooks", "reporte_inversion.qmd")
   )
   expect_true(file.exists(pdf_path))
   expect_gt(file.size(pdf_path), 1000)

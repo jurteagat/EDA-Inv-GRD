@@ -1,0 +1,10 @@
+data
+folder_xyz_ignore
+.quarto
+.Rproj.user
+renv/library
+renv/staging
+renv/python
+.git
+.gstack
+tests
