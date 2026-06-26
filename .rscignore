@@ -9,12 +9,11 @@ renv/python
 tests
 notebooks
 notas_optimizacion.md
-# Datos: se EMPAQUETAN los .parquet preparados y los CSV chicos para que el
-# cold-start en Connect no dependa de descargar de Drive. Se excluyen los crudos,
-# la caché de arranque (se reconstruye desde el Parquet del bundle, así nunca
-# queda desfasada) y cualquier .rds heredado.
-data/raw
-data/processed/_cache_app.qs2
-data/processed/_cache_app.rds
-data/processed/grd_2012_2025_t.csv
-data/processed/*.rds
+deploy_connect.R
+# OJO: el .rscignore de rsconnect SOLO excluye entradas de nivel superior (no
+# rutas anidadas como data/raw ni globs *.rds). Por eso se excluye `data` ENTERO:
+# un deploy ingenuo (deployApp(".")) no empaqueta nada de data/ y la app cae al
+# fallback de descarga desde Drive (más lento pero seguro). Para EMPAQUETAR los
+# .parquet (cold-start rápido) usa el allow-list explícito de deploy_connect.R
+# (appFiles), que tiene prioridad sobre este archivo.
+data

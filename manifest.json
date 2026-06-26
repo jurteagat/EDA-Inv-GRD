@@ -7556,95 +7556,44 @@
     }
   },
   "files": {
-    "._.claude": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.git": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.gitattributes": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.gitignore": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.Rprofile": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._.rscignore": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._app.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._data": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._global.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._manifest.json": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._notas_optimizacion.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._notebooks": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._README.md": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._renv": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._renv.lock": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._tests": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._tools": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "._www": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    ".claude/._settings.local.json": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    ".claude/settings.local.json": {
-      "checksum": "3e324912cd1bd162b8cc1e676d615f64"
-    },
-    ".gitattributes": {
-      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
-    },
     ".Rprofile": {
-      "checksum": "7f3709107af4c351fd8f0a50ca680aea"
+      "checksum": "837d2fd488567999a686974cecf04dc3"
     },
     "app.R": {
-      "checksum": "e849ee10bd4b6541f89c1d5e5d46260c"
+      "checksum": "769bd36d3e9df1ca540fb804388c4e12"
+    },
+    "data/processed/deptos_geo.parquet": {
+      "checksum": "6e33f05deacd1ebb3426509f72a54cac"
+    },
+    "data/processed/det_inv.parquet": {
+      "checksum": "fee32b531695733e40436429abcc6787"
+    },
+    "data/processed/diccionario.parquet": {
+      "checksum": "5e13b4a92366989952b220badeb3e1f0"
+    },
+    "data/processed/fechas_fuentes.csv": {
+      "checksum": "59e550847ecd3c6abb53bff98284ea4c"
+    },
+    "data/processed/geoinv.parquet": {
+      "checksum": "e62164bc2da80daf4df656615fb7a1c2"
+    },
+    "data/processed/grd_2012_25.parquet": {
+      "checksum": "15e31b296b68ca439418bd3b176b3a28"
+    },
+    "data/processed/nombres_abreviados.csv": {
+      "checksum": "3f50b41c81f205544c8604ad1005d807"
+    },
+    "EDA-Inv-GRD.Rproj": {
+      "checksum": "c8d3f84a410f46d4d8b03a268e313e35"
     },
     "global.R": {
       "checksum": "e956f1522fd6f35524a22ef20afbed04"
     },
-    "R/._datos.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "R/._exportar.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "R/._helpers.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "R/._theme_jut.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    "manifest.json": {
+      "checksum": "efa5512670c7ee4596c40bb3649e87e8"
     },
     "R/datos.R": {
-      "checksum": "20be02f6035936d2e7cf549f02a4023e"
+      "checksum": "be42d73bc5fb07ddd71f3c9bc8a600cf"
     },
     "R/exportar.R": {
       "checksum": "b117e695162c99c70b585d1552f93b0e"
@@ -7655,38 +7604,11 @@
     "R/theme_jut.R": {
       "checksum": "cc64cf70054f90afc3cfaf2188b27100"
     },
-    "README.md": {
-      "checksum": "49347ede67834955d957544c440579a0"
-    },
     "renv.lock": {
       "checksum": "64dc88ee11b71f7379a72eeb5cc2b0d3"
     },
-    "tools/._gen_manifest.R": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "tools/gen_manifest.R": {
-      "checksum": "11f6dabafda6ef1004d4d353983392ad"
-    },
-    "www/._estilos-jut.css": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "www/._fonts": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "www/._icono-inv-grd7.svg": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "www/._icono-jut.svg": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
     "www/estilos-jut.css": {
       "checksum": "8be07927acadc72c145371bb8329b427"
-    },
-    "www/fonts/._NunitoSans-Variable.ttf": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
-    },
-    "www/fonts/._OFL-NunitoSans.txt": {
-      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
     },
     "www/fonts/NunitoSans-Variable.ttf": {
       "checksum": "5e09de486460147f8107f81d57c186e7"
