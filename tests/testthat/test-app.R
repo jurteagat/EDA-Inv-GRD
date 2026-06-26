@@ -39,8 +39,8 @@ test_that("downloadButton de CSV produce contenido", {
   app <- AppDriver$new(here::here(), timeout = 60000, load_timeout = 90000)
   on.exit(app$stop(), add = TRUE)
 
-  # Navegar a la pestaña de ficha técnica
-  app$click("tab_ficha_tecnica")
+  # Navegar a la pestaña de ficha técnica (por el value del nav_panel)
+  app$set_inputs(nav_principal = "tab_ficha_tecnica")
   app$wait_for_idle()
 
   tmp <- tempfile(fileext = ".csv")

@@ -47,6 +47,7 @@ header_jut <- htmltools::tags$head(
 # ============================================================================
 
 ui <- bslib::page_navbar(
+  id = "nav_principal",  # permite navegar entre pestañas por su `value` (tests/programático)
   title = htmltools::tagList(
     htmltools::img(src = "icono-inv-grd7.svg", alt = "", class = "navbar-logo"),
     "Inversiones GRD — Perú"
@@ -445,6 +446,21 @@ server <- function(input, output, session) {
     dplyr::filter(df_grd_2012_25_dpf, codigo_unico %in% codigos_filt())
   )
 
+  # Firma de los filtros: clave de caché para los render que dependen solo del
+  # filtro aplicado (todos derivan de `filtros`, que cambia únicamente al
+  # presionar "Procesar"). Habilita bindCache app-level sobre data genérica.
+  firma_filtros <- shiny::reactive(
+    list(filtros$tip, filtros$dep, filtros$sit, filtros$ioarr, filtros$tinv)
+  )
+
+  # El widget Leaflet se monta en el browser cuando llega el primer
+  # input$mapa_bounds. Capturamos ese evento UNA vez para gatear el dibujado del
+  # mapa sin seguir dependiendo de los bounds: así los marcadores se reconstruyen
+  # solo al cambiar el filtro, no en cada pan/zoom del usuario.
+  mapa_montado <- shiny::reactiveVal(FALSE)
+  shiny::observeEvent(input$mapa_bounds, mapa_montado(TRUE),
+                      once = TRUE, ignoreNULL = TRUE)
+
   # ---- Sidebar: contador ---------------------------------------------------
   output$n_filtrados <- shiny::renderText({
     n   <- nrow(datos_filt_plain())
@@ -544,8 +560,8 @@ server <- function(input, output, session) {
     })
   })
   shiny::observe({
-    shiny::req(input$mapa_bounds)  # espera a que Leaflet esté montado en el browser
-    df    <- datos_filt()
+    df <- datos_filt()             # dependencia: redibuja al cambiar el filtro
+    shiny::req(mapa_montado())     # gatea hasta que Leaflet esté montado (sin depender de bounds)
     plain <- sf::st_drop_geometry(df)
 
     p <- leaflet::leafletProxy("mapa")
@@ -650,7 +666,7 @@ server <- function(input, output, session) {
       theme_jut()
 
     plotly::ggplotly(g, tooltip = c("y", "text"))
-  })
+  }) |> shiny::bindCache(firma_filtros())
 
   # ---- Distribuciones de montos -----------------------------------------
   output$g_montos <- plotly::renderPlotly({
@@ -702,7 +718,7 @@ server <- function(input, output, session) {
       theme_jut()
 
     plotly::ggplotly(g, tooltip = "text")
-  })
+  }) |> shiny::bindCache(firma_filtros())
 
   # ---- Boxplots por tipología (top 10) -----------------------------------
   output$g_boxplots_tipo <- shiny::renderPlot({
@@ -816,7 +832,7 @@ server <- function(input, output, session) {
                                                          size = 8))
 
     plotly::ggplotly(g, tooltip = c("x", "text"))
-  })
+  }) |> shiny::bindCache(firma_filtros())
 
   # ---- Mapa departamental (% ejecución + costo) --------------------------
   output$mapa_deptos <- leaflet::renderLeaflet({

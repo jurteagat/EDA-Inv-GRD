@@ -25,6 +25,7 @@ suppressPackageStartupMessages({
 
 source(here::here("R/helpers.R"))
 source(here::here("R/theme_jut.R"))
+source(here::here("R/datos.R"))   # leer_fuente()/ruta_fuente() para deptos_geo
 
 datos <- readRDS(params$datos_rds)
 inv   <- datos$inv
@@ -124,7 +125,7 @@ if (nrow(serie) > 0) {
 ## Ubicación
 
 ```{r ubicacion, echo=FALSE, fig.width=5, fig.height=4}
-ruta_deptos <- here::here("data", "processed", "deptos_geo.rds")
+ruta_deptos <- ruta_fuente(here::here("data", "processed", "deptos_geo"))
 coords_sf   <- tryCatch(sf::st_coordinates(inv), error = function(e) NULL)
 
 if (!is.null(coords_sf) && nrow(coords_sf) > 0) {
@@ -135,7 +136,7 @@ if (!is.null(coords_sf) && nrow(coords_sf) > 0) {
   ))
 
   if (file.exists(ruta_deptos)) {
-    deptos_geo <- readRDS(ruta_deptos)
+    deptos_geo <- leer_fuente(here::here("data", "processed", "deptos_geo"), espacial = TRUE)
     cod_d      <- stringr::str_sub(inv$ubigeo[1], 1, 2)
     depto_sf   <- dplyr::filter(deptos_geo, cod_depto == cod_d)
 

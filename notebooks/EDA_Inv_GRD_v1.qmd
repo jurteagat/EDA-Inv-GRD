@@ -154,6 +154,12 @@ summarytools::st_options(
 library(glue)
 library(readxl)
 
+# --- Lectura de fuentes en Parquet -----------------------------------------
+library(arrow)     # read_parquet
+library(sfarrow)   # GeoParquet (sf)
+# leer_fuente()/ruta_fuente(): leen Parquet (o .rds heredado) — única fuente de verdad.
+source(here::here("R", "datos.R"))
+
 # Asegura que las carpetas del proyecto existen (idempotente).
 dir.create(here::here("data", "raw"),       showWarnings = FALSE, recursive = TRUE)
 dir.create(here::here("data", "processed"), showWarnings = FALSE, recursive = TRUE)
@@ -276,10 +282,10 @@ definición que escribamos a mano puede contrastarse con la descripción
 oficial de esta tabla.
 
 ```{r diccionario-oficial}
-ruta_dicc_rds <- here::here("data", "processed","diccionario.rds")
+ruta_dicc_rds <- ruta_fuente(here::here("data", "processed", "diccionario"))
 dicc_oficial <- tryCatch(
   if (file.exists(ruta_dicc_rds)) {
-    data.table::as.data.table(readRDS(ruta_dicc_rds))
+    data.table::as.data.table(leer_fuente(here::here("data", "processed", "diccionario")))
   } else {
     NULL
   },
@@ -313,10 +319,10 @@ generada en el procesamiento, aportamos la definición local.
 # Reutiliza dicc_oficial ya cargado en el chunk anterior; solo lo lee de
 # nuevo si por algún motivo no existe (ejecución aislada de este chunk).
 if (!exists("dicc_oficial")) {
-  ruta_dicc_rds <- here::here("data", "processed","diccionario.rds")
+  ruta_dicc_rds <- ruta_fuente(here::here("data", "processed", "diccionario"))
   dicc_oficial <- tryCatch(
     if (file.exists(ruta_dicc_rds)) {
-      data.table::as.data.table(readRDS(ruta_dicc_rds))
+      data.table::as.data.table(leer_fuente(here::here("data", "processed", "diccionario")))
     } else {
       NULL
     },
@@ -369,13 +375,15 @@ DT::datatable(
 # Carga de los datos de entrada
 
 Los archivos de entrada se preparan en `00_datos_entrada.qmd` y
-quedan disponibles como `.rds` en `data/processed/`. Ejecuta ese
-cuaderno antes de correr este si es la primera vez o si hay datos
-nuevos.
+quedan disponibles como `.parquet` (GeoParquet para las capas espaciales)
+en `data/processed/`. Ejecuta ese cuaderno antes de correr este si es la
+primera vez o si hay datos nuevos.
 
-El formato `.rds` permite carga ~10× más rápida que los CSV/GeoPackage
-originales. El dataset completo se lee aquí y luego se filtra a las
-columnas necesarias para el análisis.
+El formato **Parquet** (zstd) permite carga ~4–20× más rápida que los
+CSV/GeoPackage originales, comprime mejor que `.rds` y es legible por
+pandas/geopandas. `leer_fuente()` lee Parquet (con fallback a `.rds`
+heredado); en `det_inv` se usa `col_select` para leer solo las columnas
+necesarias.
 
 ## Lectura de `df_det_inv`
 
@@ -395,7 +403,7 @@ cols_det_inv <- c(
 cols_det_inv_lower <- janitor::make_clean_names(cols_det_inv)
 
 df_det_inv <- data.table::as.data.table(
-  readRDS(here::here("data", "processed","det_inv.rds"))
+  leer_fuente(here::here("data", "processed", "det_inv"), col_select = cols_det_inv)
 )
 data.table::setnames(df_det_inv, janitor::make_clean_names(names(df_det_inv)))
 df_det_inv <- df_det_inv[, ..cols_det_inv_lower]
@@ -422,7 +430,7 @@ cat("df_det_inv dimensiones:", dim(df_det_inv), "\n")
 ## Lectura del geopackage
 
 ```{r leer-gpkg}
-df_pu_geoinv_inv_g <- readRDS(here::here("data", "processed","geoinv.rds"))
+df_pu_geoinv_inv_g <- leer_fuente(here::here("data", "processed", "geoinv"), espacial = TRUE)
 local({
   n <- janitor::make_clean_names(names(df_pu_geoinv_inv_g))
   n[n == "cod_unico"]     <- "codigo_unico"
@@ -446,7 +454,7 @@ cols_grd_12_25 <- c(
 cols_grd_12_25_lower <- janitor::make_clean_names(cols_grd_12_25)
 
 df_grd_2012_25 <- data.table::as.data.table(
-  readRDS(here::here("data", "processed","grd_2012_25.rds"))
+  leer_fuente(here::here("data", "processed", "grd_2012_25"))
 )
 data.table::setnames(df_grd_2012_25, janitor::make_clean_names(names(df_grd_2012_25)))
 df_grd_2012_25 <- df_grd_2012_25[, ..cols_grd_12_25_lower] # [POR REVISAR]
