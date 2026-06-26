@@ -1,11 +1,14 @@
 # R/datos.R — Descarga desde Drive y pipeline de datos (funciones puras)
 
-# IDs de Drive (archivos públicos sin OAuth)
+# IDs de Drive (archivos públicos sin OAuth). Apuntan a los .parquet/GeoParquet.
+# MANTENER EN SINCRONÍA con los params `gdrive_id_*` del YAML de
+# notebooks/00_datos_entrada.qmd (misma fuente, dos consumidores: la app usa
+# estos como fallback de descarga; el notebook usa los del YAML para bajar/subir).
 DRIVE_IDS <- list(
-  det_inv           = "1Q0BYJcVM6zBvbj-5sLXctW9KThS4oZ6u",
-  diccionario       = "13J6fKucKgNJ8Kngtq4gGGsnvMenC1A8i",
-  geoinv            = "1V1jRSqqgjeX7jJkhSag0b1ufB5PP9X2Z",
-  grd_12_25         = "1ZQHQOMFD8MG0r5pgDgcniUbZR_XGDGVq",
+  det_inv           = "1vXFJ0YK_8zoyMf_PChnYpCQ4y6aAPsSG",
+  diccionario       = "1OcwL7yzINuBwzZGXqPyHyoTy0s5LN9Mj",
+  geoinv            = "1cMLbOMpfYeTXhfqqos6ZjTjO-Vo9AW6z",
+  grd_12_25         = "1urf5ekLEbwO1512LXVpOq5Mmdkb4m_YV",
   nombres_abreviados = "1_ielTIIhPjN-6jd9SF7w-LZrmSJRos04",
   deptos_shp        = "1T0vOdYJLdigP1C4aykrEgJAINxit1PTA",
   fechas_fuentes    = "18jPh1hreHOM2_4VonCOlzt5IiU15STOx"
