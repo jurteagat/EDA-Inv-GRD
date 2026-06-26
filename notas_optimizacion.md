@@ -46,3 +46,46 @@ más rápido.** Cambio de bajo riesgo.
 
 ## Paquetes añadidos a renv
 arrow 24.0.0 · sfarrow 0.4.1 · qs2 0.2.2 · reactlog 1.1.1 · bench 1.1.4
+
+## Resultados (Fase 5) — antes/después
+
+Medido local, offline. **El mayor impacto en Connect no se ve aquí**: hoy el bundle
+excluye `data/` (.rscignore), así que cada cold-start descarga ~97 MB de Drive; con
+los `.parquet` empaquetados esa descarga desaparece.
+
+| Métrica | Antes | Después | Δ |
+| --- | --- | --- | --- |
+| Warm start (cache hit) | 2.10 s | **1.16 s** | −45 % |
+| Cold rebuild (sin Drive) | 11.95 s | **9.25 s** | −23 % |
+| Lectura de fuentes | ~4.2 s (RDS) | **~0.9 s** (Parquet) | −79 % |
+| Tamaño caché de arranque | 85.5 MB | **6.6 MB** | −92 % |
+| Suma de fuentes en disco | ~97 MB (RDS) | **~79 MB** (Parquet) | −19 % |
+| Descarga Drive en cold-start Connect | ~97 MB | **0** (bundle) / ~79 MB (fallback) | — |
+
+**Equivalencia:** 18/18 chequeos OK (df_geo_plain, sumas costo/devengado/avance, serie,
+opciones de filtros, paletas, diccionario, nº geometrías, sf_column=geom).
+
+**Tests:** 57 unitarios PASS + 4 shinytest2 PASS (arranque, filtro+Procesar, descarga
+CSV). El test de render PDF (`test-exportar.R:78`, `skip_on_cran`) falla por el toolchain
+quarto→typst del entorno — idéntico en `main`, ajeno a esta rama.
+
+## Cambios por dominio
+- **Data I/O:** RDS→Parquet/GeoParquet zstd-9 (`leer_fuente`/`escribir_fuente`/`ruta_fuente`
+  en R/datos.R); det_inv con col_select (32/68 cols). Caché qs2.
+- **Arranque/Connect:** `.rscignore` empaqueta `.parquet` (excluye crudos, caché y .rds);
+  la caché se reconstruye desde el Parquet del bundle (nunca desfasada); `asegurar_fuente`
+  baja `.parquet` de Drive como fallback; `manifest.json` con arrow/sfarrow/qs2.
+- **Reactividad/payload:** observe del mapa gateado por flag de montaje (no redibuja en
+  pan/zoom); bindCache en g_deptos/g_montos/g_serie. (Nota: las tablas DT ya eran
+  server-side por defecto; los KPIs ya no recomputan 5× porque `reactive()` memoiza.)
+- **Cuadernos:** EDA y reporte_inversion leen Parquet vía `leer_fuente`.
+
+## Pendiente para el merge a main
+1. **Regenerar `manifest.json` con el método de deploy real** si usan git-backed
+   (`rsconnect::writeManifest()`); el actual lista solo código + paquetes nuevos.
+2. **Re-subir las fuentes a Drive como Parquet** corriendo `00_datos_entrada.qmd` en modo
+   actualización (`leer_desde_local:true -P subir_a_drive:true`) para que el fallback de
+   Connect baje Parquet (los IDs de Drive no cambian).
+3. Decisión de deploy: push-button (`rsconnect::deployApp()`) empaqueta los `.parquet`
+   locales → cold-start sin Drive. Git-backed requiere commitear los `.parquet` o aceptar
+   el fallback a Drive.
