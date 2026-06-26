@@ -216,6 +216,37 @@
         "Built": "R 4.5.3; aarch64-apple-darwin20; 2026-03-12 02:04:47 UTC; unix"
       }
     },
+    "PKI": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "PKI",
+        "Version": "0.1-15",
+        "Title": "Public Key Infrastucture for R Based on the X.509 Standard",
+        "Authors@R": "person(\"Simon\", \"Urbanek\", role=c(\"aut\",\"cre\",\"cph\"), email=\"Simon.Urbanek@r-project.org\", comment=c(\"https://urbanek.nz\", ORCID=\"0000-0003-2297-1732\"))",
+        "Maintainer": "Simon Urbanek <Simon.Urbanek@r-project.org>",
+        "Depends": "R (>= 2.9.0), base64enc",
+        "Enhances": "gmp",
+        "Description": "Public Key Infrastucture functions such as verifying certificates, RSA encription and signing which can be used to build PKI infrastructure and perform cryptographic tasks.",
+        "License": "GPL-2 | GPL-3 | file LICENSE",
+        "URL": "http://www.rforge.net/PKI",
+        "SystemRequirements": "OpenSSL library and headers (openssl-dev or\nsimilar)",
+        "NeedsCompilation": "yes",
+        "Packaged": "2025-08-19 06:20:08 UTC; rforge",
+        "Author": "Simon Urbanek [aut, cre, cph] (https://urbanek.nz, ORCID:\n    <https://orcid.org/0000-0003-2297-1732>)",
+        "Repository": "CRAN",
+        "Date/Publication": "2025-08-19 08:30:19 UTC",
+        "Built": "R 4.5.0; aarch64-apple-darwin20; 2025-08-21 02:49:57 UTC; unix",
+        "Archs": "PKI.so.dSYM",
+        "RemoteType": "standard",
+        "RemoteRef": "PKI",
+        "RemotePkgRef": "PKI",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.1-15"
+      }
+    },
     "R6": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -308,6 +339,77 @@
         "RemoteSha": "1.1.1-1.1"
       }
     },
+    "RcppParallel": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "RcppParallel",
+        "Type": "Package",
+        "Title": "Parallel Programming Tools for 'Rcpp'",
+        "Version": "5.1.11-2",
+        "Authors@R": "c(\n    person(\"JJ\", \"Allaire\", role = c(\"aut\"), email = \"jj@rstudio.com\"),\n    person(\"Romain\", \"Francois\", role = c(\"aut\", \"cph\")),\n    person(\"Kevin\", \"Ushey\", role = c(\"aut\", \"cre\"), email = \"kevin@rstudio.com\"),\n    person(\"Gregory\", \"Vandenbrouck\", role = \"aut\"),\n    person(\"Marcus\", \"Geelnard\", role = c(\"aut\", \"cph\"),\n       comment = \"TinyThread library, https://tinythreadpp.bitsnbites.eu/\"),\n    person(\"Hamada S.\", \"Badr\",\n       email = \"badr@jhu.edu\",\n       role = c(\"ctb\"),\n       comment = c(ORCID = \"0000-0002-9808-2344\")),\n    person(family = \"Posit, PBC\", role = \"cph\"),\n    person(family = \"Intel\", role = c(\"aut\", \"cph\"),\n       comment = \"Intel TBB library, https://www.threadingbuildingblocks.org/\"),\n    person(family = \"Microsoft\", role = \"cph\")\n    )",
+        "Description": "High level functions for parallel programming with 'Rcpp'.\n    For example, the 'parallelFor()' function can be used to convert the work of\n    a standard serial \"for\" loop into a parallel one and the 'parallelReduce()'\n    function can be used for accumulating aggregate or other values.",
+        "Depends": "R (>= 3.0.2)",
+        "Suggests": "Rcpp, RUnit, knitr, rmarkdown",
+        "SystemRequirements": "GNU make, Intel TBB, Windows: cmd.exe and\ncscript.exe, Solaris: g++ is required",
+        "License": "GPL (>= 3)",
+        "URL": "https://rcppcore.github.io/RcppParallel/,\nhttps://github.com/RcppCore/RcppParallel",
+        "BugReports": "https://github.com/RcppCore/RcppParallel/issues",
+        "Biarch": "TRUE",
+        "RoxygenNote": "7.1.1",
+        "Encoding": "UTF-8",
+        "NeedsCompilation": "yes",
+        "Packaged": "2026-03-03 18:36:15 UTC; kevin",
+        "Maintainer": "Kevin Ushey <kevin@rstudio.com>",
+        "Author": "JJ Allaire [aut],\n  Romain Francois [aut, cph],\n  Kevin Ushey [aut, cre],\n  Gregory Vandenbrouck [aut],\n  Marcus Geelnard [aut, cph] (TinyThread library,\n    https://tinythreadpp.bitsnbites.eu/),\n  Hamada S. Badr [ctb] (ORCID: <https://orcid.org/0000-0002-9808-2344>),\n  Posit, PBC [cph],\n  Intel [aut, cph] (Intel TBB library,\n    https://www.threadingbuildingblocks.org/),\n  Microsoft [cph]",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-03-05 12:20:09 UTC",
+        "Built": "R 4.5.2; aarch64-apple-darwin20; 2026-03-05 13:43:44 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "RcppParallel",
+        "RemotePkgRef": "RcppParallel",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "5.1.11-2"
+      }
+    },
+    "RcppTOML": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "RcppTOML",
+        "Type": "Package",
+        "Title": "'Rcpp' Bindings to Parser for \"Tom's Obvious Markup Language\"",
+        "Version": "0.2.3",
+        "Date": "2025-03-08",
+        "Authors@R": "c(person(\"Dirk\", \"Eddelbuettel\", role = c(\"aut\", \"cre\"), email = \"edd@debian.org\",\n                    comment = c(ORCID = \"0000-0001-6419-907X\")),\n             person(\"Mark\", \"Gillard\", role = \"aut\",\n                    comment = \"Author of 'toml++' header library\"))",
+        "Description": "The configuration format defined by 'TOML' (which expands to\n \"Tom's Obvious Markup Language\") specifies an excellent format\n (described at <https://toml.io/en/>) suitable for both human editing\n as well as the common uses of a machine-readable format. This package\n uses 'Rcpp' to connect to the 'toml++' parser written by Mark Gillard\n to R.",
+        "SystemRequirements": "A C++17 compiler",
+        "BugReports": "https://github.com/eddelbuettel/rcpptoml/issues",
+        "URL": "http://dirk.eddelbuettel.com/code/rcpp.toml.html",
+        "Imports": "Rcpp (>= 1.0.8)",
+        "Depends": "R (>= 3.3.0)",
+        "LinkingTo": "Rcpp",
+        "Suggests": "tinytest",
+        "License": "GPL (>= 2)",
+        "NeedsCompilation": "yes",
+        "Packaged": "2025-03-08 13:54:57 UTC; edd",
+        "Author": "Dirk Eddelbuettel [aut, cre] (<https://orcid.org/0000-0001-6419-907X>),\n  Mark Gillard [aut] (Author of 'toml++' header library)",
+        "Maintainer": "Dirk Eddelbuettel <edd@debian.org>",
+        "Repository": "CRAN",
+        "Date/Publication": "2025-03-08 14:30:06 UTC",
+        "Built": "R 4.5.0; aarch64-apple-darwin20; 2025-03-31 22:01:30 UTC; unix",
+        "Archs": "RcppTOML.so.dSYM",
+        "RemoteType": "standard",
+        "RemoteRef": "RcppTOML",
+        "RemotePkgRef": "RcppTOML",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.2.3"
+      }
+    },
     "S7": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -387,6 +489,47 @@
         "RemoteSha": "8.2.0"
       }
     },
+    "arrow": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "arrow",
+        "Title": "Integration to 'Apache' 'Arrow'",
+        "Version": "24.0.0",
+        "Authors@R": "c(\n    person(\"Neal\", \"Richardson\", email = \"neal.p.richardson@gmail.com\", role = c(\"aut\")),\n    person(\"Ian\", \"Cook\", email = \"ianmcook@gmail.com\", role = c(\"aut\")),\n    person(\"Nic\", \"Crane\", email = \"thisisnic@gmail.com\", role = c(\"aut\")),\n    person(\"Dewey\", \"Dunnington\", role = c(\"aut\"), email = \"dewey@fishandwhistle.net\", comment = c(ORCID = \"0000-0002-9415-4582\")),\n    person(\"Romain\", \"Fran\\u00e7ois\", role = c(\"aut\"), comment = c(ORCID = \"0000-0002-2444-4226\")),\n    person(\"Jonathan\", \"Keane\", email = \"jkeane@gmail.com\", role = c(\"aut\", \"cre\")),\n    person(\"Bryce\", \"Mecum\", email = \"brycemecum@gmail.com\", role = c(\"aut\")),\n    person(\"Drago\\u0219\", \"Moldovan-Gr\\u00fcnfeld\", email = \"dragos.mold@gmail.com\", role = c(\"aut\")),\n    person(\"Jeroen\", \"Ooms\", email = \"jeroen@berkeley.edu\", role = c(\"aut\")),\n    person(\"Jacob\", \"Wujciak-Jens\", email = \"jacob@wujciak.de\", role = c(\"aut\")),\n    person(\"Javier\", \"Luraschi\", email = \"javier@rstudio.com\", role = c(\"ctb\")),\n    person(\"Karl\", \"Dunkle Werner\", email = \"karldw@users.noreply.github.com\", role = c(\"ctb\"), comment = c(ORCID = \"0000-0003-0523-7309\")),\n    person(\"Jeffrey\", \"Wong\", email = \"jeffreyw@netflix.com\", role = c(\"ctb\")),\n    person(\"Apache Arrow\", email = \"dev@arrow.apache.org\", role = c(\"aut\", \"cph\"))\n  )",
+        "Description": "'Apache' 'Arrow' <https://arrow.apache.org/> is a cross-language\n    development platform for in-memory data. It specifies a standardized\n    language-independent columnar memory format for flat and hierarchical data,\n    organized for efficient analytic operations on modern hardware. This\n    package provides an interface to the 'Arrow C++' library.",
+        "Depends": "R (>= 4.1)",
+        "License": "Apache License (>= 2.0)",
+        "URL": "https://github.com/apache/arrow/, https://arrow.apache.org/docs/r/",
+        "BugReports": "https://github.com/apache/arrow/issues",
+        "Encoding": "UTF-8",
+        "Language": "en-US",
+        "SystemRequirements": "C++20; for AWS S3 support on Linux, libcurl and\nopenssl (optional); cmake >= 3.26 (build-time only, and only\nfor full source build)",
+        "Biarch": "true",
+        "Imports": "assertthat, bit64 (>= 0.9-7), glue, methods, purrr, R6, rlang\n(>= 1.0.0), stats, tidyselect (>= 1.0.0), utils, vctrs",
+        "RoxygenNote": "7.3.3",
+        "Config/testthat/edition": "3",
+        "Config/build/bootstrap": "TRUE",
+        "Suggests": "blob, curl, cli, DBI, dbplyr, decor, distro, dplyr, duckdb\n(>= 0.2.8), hms, jsonlite, knitr, lubridate, pillar, pkgload,\nreticulate, rmarkdown, stringi, stringr, sys, testthat (>=\n3.3.0), tibble, tzdb, withr",
+        "LinkingTo": "cpp11 (>= 0.4.2)",
+        "Collate": "'arrowExports.R' 'enums.R' 'arrow-object.R' 'type.R'\n'array-data.R' 'arrow-datum.R' 'array.R' 'arrow-info.R'\n'arrow-package.R' 'arrow-tabular.R' 'buffer.R'\n'chunked-array.R' 'io.R' 'compression.R' 'scalar.R' 'compute.R'\n'config.R' 'csv.R' 'dataset.R' 'dataset-factory.R'\n'dataset-format.R' 'dataset-partition.R' 'dataset-scan.R'\n'dataset-write.R' 'dictionary.R' 'dplyr-across.R'\n'dplyr-arrange.R' 'dplyr-by.R' 'dplyr-collect.R'\n'dplyr-count.R' 'dplyr-datetime-helpers.R' 'dplyr-distinct.R'\n'dplyr-eval.R' 'dplyr-filter.R' 'dplyr-funcs-agg.R'\n'dplyr-funcs-augmented.R' 'dplyr-funcs-conditional.R'\n'dplyr-funcs-datetime.R' 'dplyr-funcs-doc.R'\n'dplyr-funcs-math.R' 'dplyr-funcs-simple.R'\n'dplyr-funcs-string.R' 'dplyr-funcs-type.R' 'expression.R'\n'dplyr-funcs.R' 'dplyr-glimpse.R' 'dplyr-group-by.R'\n'dplyr-join.R' 'dplyr-mutate.R' 'dplyr-select.R'\n'dplyr-slice.R' 'dplyr-summarize.R' 'dplyr-union.R'\n'record-batch.R' 'table.R' 'dplyr.R' 'duckdb.R' 'extension.R'\n'feather.R' 'field.R' 'filesystem.R' 'flight.R'\n'install-arrow.R' 'ipc-stream.R' 'json.R' 'memory-pool.R'\n'message.R' 'metadata.R' 'parquet.R' 'python.R'\n'query-engine.R' 'record-batch-reader.R'\n'record-batch-writer.R' 'reexports-bit64.R'\n'reexports-tidyselect.R' 'schema.R' 'udf.R' 'util.R'",
+        "NeedsCompilation": "yes",
+        "Packaged": "2026-04-27 03:37:21 UTC; bryce",
+        "Author": "Neal Richardson [aut],\n  Ian Cook [aut],\n  Nic Crane [aut],\n  Dewey Dunnington [aut] (ORCID: <https://orcid.org/0000-0002-9415-4582>),\n  Romain François [aut] (ORCID: <https://orcid.org/0000-0002-2444-4226>),\n  Jonathan Keane [aut, cre],\n  Bryce Mecum [aut],\n  Dragoș Moldovan-Grünfeld [aut],\n  Jeroen Ooms [aut],\n  Jacob Wujciak-Jens [aut],\n  Javier Luraschi [ctb],\n  Karl Dunkle Werner [ctb] (ORCID:\n    <https://orcid.org/0000-0003-0523-7309>),\n  Jeffrey Wong [ctb],\n  Apache Arrow [aut, cph]",
+        "Maintainer": "Jonathan Keane <jkeane@gmail.com>",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-04-29 13:00:15 UTC",
+        "Built": "R 4.5.2; aarch64-apple-darwin20; 2026-04-29 15:45:02 UTC; unix",
+        "Archs": "arrow.so.dSYM",
+        "RemoteType": "standard",
+        "RemoteRef": "arrow",
+        "RemotePkgRef": "arrow",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "24.0.0"
+      }
+    },
     "askpass": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -420,6 +563,36 @@
         "RemoteReposName": "CRAN",
         "RemotePkgPlatform": "aarch64-apple-darwin20",
         "RemoteSha": "1.2.1"
+      }
+    },
+    "assertthat": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "assertthat",
+        "Title": "Easy Pre and Post Assertions",
+        "Version": "0.2.1",
+        "Authors@R": "\n  person(\"Hadley\", \"Wickham\", , \"hadley@rstudio.com\", c(\"aut\", \"cre\"))",
+        "Description": "An extension to stopifnot() that makes it easy to declare \n    the pre and post conditions that you code should satisfy, while also \n    producing friendly error messages so that your users know what's gone\n    wrong.",
+        "License": "GPL-3",
+        "Imports": "tools",
+        "Suggests": "testthat, covr",
+        "RoxygenNote": "6.0.1",
+        "Collate": "'assert-that.r' 'on-failure.r' 'assertions-file.r'\n'assertions-scalar.R' 'assertions.r' 'base.r'\n'base-comparison.r' 'base-is.r' 'base-logical.r' 'base-misc.r'\n'utils.r' 'validate-that.R'",
+        "NeedsCompilation": "no",
+        "Packaged": "2019-03-21 13:11:01 UTC; hadley",
+        "Author": "Hadley Wickham [aut, cre]",
+        "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+        "Repository": "CRAN",
+        "Date/Publication": "2019-03-21 14:53:46 UTC",
+        "Built": "R 4.5.0; ; 2025-03-31 21:57:52 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "assertthat",
+        "RemotePkgRef": "assertthat",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.2.1"
       }
     },
     "backports": {
@@ -2986,6 +3159,42 @@
         "RemoteSha": "2.2.1"
       }
     },
+    "jose": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "jose",
+        "Type": "Package",
+        "Title": "JavaScript Object Signing and Encryption",
+        "Version": "2.0.0",
+        "Authors@R": "person(\"Jeroen\", \"Ooms\", role = c(\"aut\", \"cre\"), \n    email = \"jeroenooms@gmail.com\", comment = c(ORCID = \"0000-0002-4035-0289\"))",
+        "Description": "Read and write JSON Web Keys (JWK, rfc7517), generate and verify JSON\n    Web Signatures (JWS, rfc7515) and encode/decode JSON Web Tokens (JWT, rfc7519)\n    <https://datatracker.ietf.org/wg/jose/documents/>. These standards provide \n    modern signing and encryption formats that are natively supported by browsers\n    via the JavaScript WebCryptoAPI <https://www.w3.org/TR/webcrypto/#jose>, \n    and used by services like OAuth 2.0, LetsEncrypt, and Github Apps.",
+        "License": "MIT + file LICENSE",
+        "URL": "https://r-lib.r-universe.dev/jose",
+        "BugReports": "https://github.com/r-lib/jose/issues",
+        "Depends": "openssl (>= 1.2.1)",
+        "Imports": "jsonlite",
+        "RoxygenNote": "7.3.3.9000",
+        "VignetteBuilder": "knitr",
+        "Suggests": "spelling, testthat, knitr, rmarkdown",
+        "Encoding": "UTF-8",
+        "Language": "en-US",
+        "NeedsCompilation": "no",
+        "Packaged": "2026-04-21 21:15:42 UTC; jeroen",
+        "Author": "Jeroen Ooms [aut, cre] (ORCID: <https://orcid.org/0000-0002-4035-0289>)",
+        "Maintainer": "Jeroen Ooms <jeroenooms@gmail.com>",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-04-22 06:40:03 UTC",
+        "Built": "R 4.5.2; ; 2026-04-22 09:38:49 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "jose",
+        "RemotePkgRef": "jose",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "2.0.0"
+      }
+    },
     "jquerylib": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -3746,6 +3955,41 @@
         "Built": "R 4.5.0; ; 2025-09-01 01:35:46 UTC; unix"
       }
     },
+    "packrat": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Type": "Package",
+        "Package": "packrat",
+        "Title": "A Dependency Management System for Projects and their R Package\nDependencies",
+        "Version": "0.9.3",
+        "Authors@R": "c(\n    person(\"Aron\", \"Atkins\", , \"aron@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Toph\", \"Allen\", role = \"aut\"),\n    person(\"Kevin\", \"Ushey\", role = \"aut\"),\n    person(\"Jonathan\", \"McPherson\", role = \"aut\"),\n    person(\"Joe\", \"Cheng\", role = \"aut\"),\n    person(\"JJ\", \"Allaire\", role = \"aut\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )",
+        "Description": "Manage the R packages your project depends on in an isolated,\n    portable, and reproducible way.",
+        "License": "GPL-2",
+        "URL": "https://github.com/rstudio/packrat",
+        "BugReports": "https://github.com/rstudio/packrat/issues",
+        "Depends": "R (>= 3.0.0)",
+        "Imports": "tools, utils",
+        "Suggests": "devtools, httr, knitr, mockery, rmarkdown, testthat (>=\n3.0.0), webfakes, withr",
+        "Config/testthat/edition": "3",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.2",
+        "NeedsCompilation": "no",
+        "Packaged": "2025-06-16 19:37:19 UTC; aron",
+        "Author": "Aron Atkins [aut, cre],\n  Toph Allen [aut],\n  Kevin Ushey [aut],\n  Jonathan McPherson [aut],\n  Joe Cheng [aut],\n  JJ Allaire [aut],\n  Posit Software, PBC [cph, fnd]",
+        "Maintainer": "Aron Atkins <aron@posit.co>",
+        "Repository": "CRAN",
+        "Date/Publication": "2025-06-16 20:00:02 UTC",
+        "Built": "R 4.5.0; ; 2025-06-16 21:18:07 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "packrat",
+        "RemotePkgRef": "packrat",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.9.3"
+      }
+    },
     "pak": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -4495,6 +4739,48 @@
         "RemoteReposName": "CRAN",
         "RemotePkgPlatform": "aarch64-apple-darwin20",
         "RemoteSha": "1.2.2"
+      }
+    },
+    "qs2": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "qs2",
+        "Type": "Package",
+        "Title": "Efficient Serialization of R Objects",
+        "Version": "0.2.2",
+        "Date": "2026-06-02",
+        "Authors@R": "c(\n    person(\"Travers\", \"Ching\", email = \"traversc@gmail.com\", role = c(\"aut\", \"cre\", \"cph\")),\n    person(\"Yann\", \"Collet\", role = c(\"ctb\", \"cph\"), comment = \"Yann Collet is the author of the bundled zstd\"),\n    person(\"Facebook, Inc.\", role = \"cph\", comment = \"Facebook is the copyright holder of the bundled zstd code\"),\n    person(\"Reichardt\", \"Tino\", role = c(\"ctb\", \"cph\"), comment = \"Contributor/copyright holder of zstd bundled code\"),\n    person(\"Skibinski\", \"Przemyslaw\", role = c(\"ctb\", \"cph\"), comment = \"Contributor/copyright holder of zstd bundled code\"),\n    person(\"Mori\", \"Yuta\", role = c(\"ctb\", \"cph\"), comment = \"Contributor/copyright holder of zstd bundled code\"),\n    person(\"Francesc\", \"Alted\", role = c(\"ctb\", \"cph\"), comment = \"Shuffling routines derived from Blosc library\"))",
+        "Maintainer": "Travers Ching <traversc@gmail.com>",
+        "Description": "Streamlines and accelerates the process of saving and loading R objects, improving speed and compression compared to other methods. The package provides two compression formats: the 'qs2' format, which uses R serialization via the C API while optimizing compression and disk I/O, and the 'qdata' format, featuring custom serialization for slightly faster performance and better compression. Additionally, the 'qs2' format can be directly converted to the standard 'RDS' format, ensuring long-term compatibility with future versions of R.",
+        "License": "GPL-3",
+        "LazyData": "true",
+        "Biarch": "true",
+        "Depends": "R (>= 3.5.0)",
+        "Imports": "Rcpp, RcppParallel, stringfish (>= 0.18.0)",
+        "LinkingTo": "Rcpp, RcppParallel",
+        "Suggests": "knitr, rmarkdown, dplyr, data.table, stringi",
+        "SystemRequirements": "GNU make, C++17",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.3",
+        "VignetteBuilder": "knitr",
+        "Copyright": "This package includes code from the 'zstd' library owned by\nFacebook, Inc. and created by Yann Collet; and code derived\nfrom the 'Blosc' library created and owned by Francesc Alted.",
+        "URL": "https://github.com/qsbase/qs2",
+        "BugReports": "https://github.com/qsbase/qs2/issues",
+        "NeedsCompilation": "yes",
+        "Packaged": "2026-06-03 07:00:39 UTC; ted",
+        "Author": "Travers Ching [aut, cre, cph],\n  Yann Collet [ctb, cph] (Yann Collet is the author of the bundled zstd),\n  Facebook, Inc. [cph] (Facebook is the copyright holder of the bundled\n    zstd code),\n  Reichardt Tino [ctb, cph] (Contributor/copyright holder of zstd bundled\n    code),\n  Skibinski Przemyslaw [ctb, cph] (Contributor/copyright holder of zstd\n    bundled code),\n  Mori Yuta [ctb, cph] (Contributor/copyright holder of zstd bundled\n    code),\n  Francesc Alted [ctb, cph] (Shuffling routines derived from Blosc\n    library)",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-06-03 07:40:02 UTC",
+        "Built": "R 4.5.2; aarch64-apple-darwin20; 2026-06-03 12:23:46 UTC; unix",
+        "Archs": "qs2.so.dSYM",
+        "RemoteType": "standard",
+        "RemoteRef": "qs2",
+        "RemotePkgRef": "qs2",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.2.2"
       }
     },
     "quarto": {
@@ -5253,6 +5539,45 @@
         "RemoteSha": "2.1.1"
       }
     },
+    "rsconnect": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Type": "Package",
+        "Package": "rsconnect",
+        "Title": "Deploy Docs, Apps, and APIs to 'Posit Connect', 'shinyapps.io',\nand 'RPubs'",
+        "Version": "1.8.0",
+        "Authors@R": "c(\n    person(\"Aron\", \"Atkins\", , \"aron@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Toph\", \"Allen\", role = \"aut\"),\n    person(\"Hadley\", \"Wickham\", role = \"aut\"),\n    person(\"Jonathan\", \"McPherson\", role = \"aut\"),\n    person(\"JJ\", \"Allaire\", role = \"aut\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )",
+        "Description": "Programmatic deployment interface for 'RPubs',\n    'shinyapps.io', and 'Posit Connect'. Supported content types include R\n    Markdown documents, Shiny applications, Plumber APIs, plots, and\n    static web content.",
+        "License": "GPL-2",
+        "URL": "https://rstudio.github.io/rsconnect/,\nhttps://github.com/rstudio/rsconnect",
+        "BugReports": "https://github.com/rstudio/rsconnect/issues",
+        "Depends": "R (>= 3.5.0)",
+        "Imports": "cli, curl, digest, httr2, jsonlite, lifecycle, openssl (>=\n2.0.0), PKI, packrat (>= 0.6), renv (>= 1.0.0), rlang (>=\n1.0.0), rstudioapi (>= 0.18.0), snowflakeauth, tools, yaml (>=\n2.1.5), utils",
+        "Suggests": "Biobase, BiocManager, foreign, knitr, MASS, plumber (>=\n0.3.2), quarto, reticulate, rmarkdown (>= 1.1), shiny, testthat\n(>= 3.1.9), webfakes, withr",
+        "VignetteBuilder": "knitr, rmarkdown",
+        "Config/Needs/website": "tidyverse/tidytemplate",
+        "Config/testthat/edition": "3",
+        "Config/testthat/parallel": "true",
+        "Config/Python/Note": "Python <= 3.10 requires tomllib package for\npyproject.toml parsing",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.3",
+        "NeedsCompilation": "no",
+        "Packaged": "2026-04-09 13:39:10 UTC; aron",
+        "Author": "Aron Atkins [aut, cre],\n  Toph Allen [aut],\n  Hadley Wickham [aut],\n  Jonathan McPherson [aut],\n  JJ Allaire [aut],\n  Posit Software, PBC [cph, fnd]",
+        "Maintainer": "Aron Atkins <aron@posit.co>",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-04-10 06:50:08 UTC",
+        "Built": "R 4.5.2; ; 2026-04-15 05:06:28 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "rsconnect",
+        "RemotePkgRef": "rsconnect",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "1.8.0"
+      }
+    },
     "rstudioapi": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -5569,6 +5894,40 @@
         "RemoteSha": "1.1-1"
       }
     },
+    "sfarrow": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "sfarrow",
+        "Title": "Read/Write Simple Feature Objects ('sf') with 'Apache' 'Arrow'",
+        "Version": "0.4.1",
+        "Date": "2021-10-25",
+        "Authors@R": "\n    person(given = \"Chris\",\n           family = \"Jochem\",\n           role = c(\"aut\", \"cre\"),\n           email = \"w.c.jochem@soton.ac.uk\",\n           comment = c(ORCID = \"0000-0003-2192-5988\"))",
+        "Description": "Support for reading/writing simple feature ('sf') spatial objects from/to 'Parquet' files. 'Parquet' files are an open-source, column-oriented data storage format from Apache (<https://parquet.apache.org/>), now popular across programming languages. This implementation converts simple feature list geometries into well-known binary format for use by 'arrow', and coordinate reference system information is maintained in a standard metadata format.",
+        "License": "MIT + file LICENSE",
+        "URL": "https://github.com/wcjochem/sfarrow,\nhttps://wcjochem.github.io/sfarrow/",
+        "BugReports": "https://github.com/wcjochem/sfarrow/issues",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.1.1",
+        "Imports": "sf, arrow, jsonlite, dplyr,",
+        "Suggests": "knitr, rmarkdown",
+        "VignetteBuilder": "knitr",
+        "NeedsCompilation": "no",
+        "Packaged": "2021-10-27 16:15:34 UTC; jochem",
+        "Author": "Chris Jochem [aut, cre] (<https://orcid.org/0000-0003-2192-5988>)",
+        "Maintainer": "Chris Jochem <w.c.jochem@soton.ac.uk>",
+        "Repository": "CRAN",
+        "Date/Publication": "2021-10-27 16:30:02 UTC",
+        "Built": "R 4.5.0; ; 2025-04-02 07:12:18 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "sfarrow",
+        "RemotePkgRef": "sfarrow",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.4.1"
+      }
+    },
     "sfheaders": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -5749,6 +6108,39 @@
         "RemoteSha": "0.11.1"
       }
     },
+    "snowflakeauth": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "snowflakeauth",
+        "Title": "Authentication Helpers for 'Snowflake'",
+        "Version": "0.2.2",
+        "Authors@R": "c(\n    person(\"Aaron\", \"Jacobs\", , \"aaron.jacobs@posit.co\", role = c(\"aut\")),\n    person(\"E. David\", \"Aja\", , \"david@posit.co\", role = c(\"aut\", \"cre\")),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"))\n  )",
+        "Description": "Authentication helpers for 'Snowflake'.\n    It provides compatibility with authentication approaches supported\n    by the 'Snowflake Connector for Python' <https://pypi.org/project/snowflake-connector-python>\n    and the 'Snowflake CLI' <https://pypi.org/project/snowflake-cli>.",
+        "License": "MIT + file LICENSE",
+        "Encoding": "UTF-8",
+        "Imports": "cli, curl, jsonlite, RcppTOML, rlang, jose, openssl",
+        "Suggests": "httpuv, keyring, testthat (>= 3.0.0), withr",
+        "RoxygenNote": "7.3.2",
+        "Config/testthat/edition": "3",
+        "URL": "https://posit-dev.github.io/snowflakeauth/,\nhttps://github.com/posit-dev/snowflakeauth",
+        "BugReports": "https://github.com/posit-dev/snowflakeauth/issues",
+        "NeedsCompilation": "no",
+        "Packaged": "2026-02-24 17:45:53 UTC; edavidaja",
+        "Author": "Aaron Jacobs [aut],\n  E. David Aja [aut, cre],\n  Posit Software, PBC [cph, fnd]",
+        "Maintainer": "E. David Aja <david@posit.co>",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-02-25 06:30:23 UTC",
+        "Built": "R 4.5.2; ; 2026-02-25 09:45:26 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "snowflakeauth",
+        "RemotePkgRef": "snowflakeauth",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.2.2"
+      }
+    },
     "sourcetools": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -5814,6 +6206,46 @@
         "RemoteReposName": "CRAN",
         "RemotePkgPlatform": "aarch64-apple-darwin20",
         "RemoteSha": "2.2-1"
+      }
+    },
+    "stringfish": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "stringfish",
+        "Title": "Alt String Implementation",
+        "Version": "0.19.0",
+        "Date": "2026-04-18",
+        "Authors@R": "c(\n    person(\"Travers\", \"Ching\", email = \"traversc@gmail.com\", role = c(\"aut\", \"cre\", \"cph\")),\n    person(\"Phillip\", \"Hazel\", role = c(\"ctb\"), comment = \"Bundled PCRE2 code\"),\n    person(\"Zoltan\", \"Herczeg\", role = c(\"ctb\", \"cph\"), comment = \"Bundled PCRE2 code\"),\n    person(\"University of Cambridge\", role = c(\"cph\"), comment = \"Bundled PCRE2 code\"),\n    person(\"Tilera Corporation\", role = c(\"cph\"), comment = \"Stack-less Just-In-Time compiler bundled with PCRE2\"),\n    person(\"Yann\", \"Collet\", role = c(\"ctb\", \"cph\"), comment = \"Yann Collet is the author of the bundled xxHash code\"))",
+        "Maintainer": "Travers Ching <traversc@gmail.com>",
+        "Description": "Provides an extendable, performant and multithreaded 'alt-string' implementation backed by 'C++' vectors and strings.",
+        "License": "GPL-3",
+        "Biarch": "true",
+        "Encoding": "UTF-8",
+        "Depends": "R (>= 3.6.0)",
+        "SystemRequirements": "GNU make, C++17",
+        "LinkingTo": "Rcpp (>= 0.12.18.3), RcppParallel (>= 5.1.4)",
+        "Imports": "Rcpp, RcppParallel",
+        "Suggests": "knitr, rmarkdown",
+        "VignetteBuilder": "knitr",
+        "RoxygenNote": "7.3.3",
+        "Copyright": "Copyright for the bundled 'PCRE2' library is held by\nUniversity of Cambridge, Zoltan Herczeg and Tilera Corporation\n(Stack-less Just-In-Time compiler); Copyright for the bundled\n'xxHash' code is held by Yann Collet.",
+        "URL": "https://github.com/traversc/stringfish",
+        "BugReports": "https://github.com/traversc/stringfish/issues",
+        "NeedsCompilation": "yes",
+        "Packaged": "2026-04-18 03:31:12 UTC; ted",
+        "Author": "Travers Ching [aut, cre, cph],\n  Phillip Hazel [ctb] (Bundled PCRE2 code),\n  Zoltan Herczeg [ctb, cph] (Bundled PCRE2 code),\n  University of Cambridge [cph] (Bundled PCRE2 code),\n  Tilera Corporation [cph] (Stack-less Just-In-Time compiler bundled with\n    PCRE2),\n  Yann Collet [ctb, cph] (Yann Collet is the author of the bundled xxHash\n    code)",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-04-21 11:00:03 UTC",
+        "Built": "R 4.5.2; aarch64-apple-darwin20; 2026-04-21 19:10:55 UTC; unix",
+        "Archs": "stringfish.so.dSYM",
+        "RemoteType": "standard",
+        "RemoteRef": "stringfish",
+        "RemotePkgRef": "stringfish",
+        "RemoteRepos": "https://cran.rstudio.com",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.19.0"
       }
     },
     "stringi": {
@@ -7124,17 +7556,95 @@
     }
   },
   "files": {
+    "._.claude": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._.git": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._.gitattributes": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._.gitignore": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._.Rprofile": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._.rscignore": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._app.R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._data": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._global.R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._manifest.json": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._notas_optimizacion.md": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._notebooks": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._README.md": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._renv": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._renv.lock": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._tests": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._tools": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "._www": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    ".claude/._settings.local.json": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    ".claude/settings.local.json": {
+      "checksum": "3e324912cd1bd162b8cc1e676d615f64"
+    },
+    ".gitattributes": {
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    ".Rprofile": {
+      "checksum": "7f3709107af4c351fd8f0a50ca680aea"
+    },
     "app.R": {
       "checksum": "e849ee10bd4b6541f89c1d5e5d46260c"
     },
     "global.R": {
-      "checksum": "7d5c478bbb21b2f58ec6bced381b7a86"
+      "checksum": "e956f1522fd6f35524a22ef20afbed04"
     },
-    "notebooks/reporte_inversion.qmd": {
-      "checksum": "8bfc2696c40bf91f902d1ab394920e13"
+    "R/._datos.R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "R/._exportar.R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "R/._helpers.R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "R/._theme_jut.R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
     },
     "R/datos.R": {
-      "checksum": "c6684e22cde8bffefc6e6bbeaf06a111"
+      "checksum": "20be02f6035936d2e7cf549f02a4023e"
     },
     "R/exportar.R": {
       "checksum": "b117e695162c99c70b585d1552f93b0e"
@@ -7145,11 +7655,38 @@
     "R/theme_jut.R": {
       "checksum": "cc64cf70054f90afc3cfaf2188b27100"
     },
+    "README.md": {
+      "checksum": "49347ede67834955d957544c440579a0"
+    },
     "renv.lock": {
-      "checksum": "d669fbfe89b4ee420fd2c9469a5d0f1d"
+      "checksum": "64dc88ee11b71f7379a72eeb5cc2b0d3"
+    },
+    "tools/._gen_manifest.R": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "tools/gen_manifest.R": {
+      "checksum": "11f6dabafda6ef1004d4d353983392ad"
+    },
+    "www/._estilos-jut.css": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "www/._fonts": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "www/._icono-inv-grd7.svg": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "www/._icono-jut.svg": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
     },
     "www/estilos-jut.css": {
       "checksum": "8be07927acadc72c145371bb8329b427"
+    },
+    "www/fonts/._NunitoSans-Variable.ttf": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
+    },
+    "www/fonts/._OFL-NunitoSans.txt": {
+      "checksum": "20146bcc7ef5cb44300ad5d1d7dee251"
     },
     "www/fonts/NunitoSans-Variable.ttf": {
       "checksum": "5e09de486460147f8107f81d57c186e7"

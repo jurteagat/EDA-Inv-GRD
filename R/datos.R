@@ -30,6 +30,72 @@ zero_pad_ubigeo <- function(x) {
   stringr::str_pad(as.character(x), width = 6, side = "left", pad = "0")
 }
 
+# --- Lectura/escritura de fuentes en Parquet (con fallback a RDS) -------------
+# Las fuentes canónicas son Parquet/GeoParquet: más livianas que el RDS gzip y
+# de lectura ~4–20× más rápida (ver notas_optimizacion.md), y legibles por
+# pandas/geopandas para futuros complementos en Python. Durante la transición se
+# mantiene el fallback a `.rds` para no romper entornos que aún no migraron.
+
+# Compresión por defecto de los Parquet del proyecto: zstd nivel 9 (más chico
+# que RDS gzip y misma velocidad de lectura que snappy).
+.COMPRESION_PARQUET <- "zstd"
+.NIVEL_PARQUET      <- 9L
+
+#' Devuelve la ruta de una fuente priorizando `.parquet` sobre `.rds`.
+#' `base` es la ruta SIN extensión (o con una extensión que se ignora),
+#' p.ej. `ruta_fuente(here::here("data/processed/det_inv"))`.
+ruta_fuente <- function(base) {
+  base <- sub("\\.(parquet|rds)$", "", base)
+  pq <- paste0(base, ".parquet")
+  if (file.exists(pq)) pq else paste0(base, ".rds")
+}
+
+#' Lee una fuente: `.parquet` (preferido) o `.rds` (fallback de transición).
+#' `espacial = TRUE` usa GeoParquet/sf. `col_select` (solo aplica al leer
+#' Parquet no espacial) limita las columnas leídas para ahorrar RAM y tiempo;
+#' en el camino RDS se ignora y el llamador selecciona columnas después.
+leer_fuente <- function(base, espacial = FALSE, col_select = NULL) {
+  f <- ruta_fuente(base)
+  if (grepl("\\.parquet$", f)) {
+    if (espacial) {
+      sfarrow::st_read_parquet(f)
+    } else if (!is.null(col_select)) {
+      arrow::read_parquet(f, col_select = dplyr::all_of(col_select))
+    } else {
+      arrow::read_parquet(f)
+    }
+  } else {
+    readRDS(f)
+  }
+}
+
+#' Escribe una fuente como Parquet/GeoParquet con la compresión del proyecto.
+#' Devuelve la ruta del `.parquet` escrito.
+escribir_fuente <- function(obj, base, espacial = FALSE) {
+  destino <- paste0(sub("\\.(parquet|rds)$", "", base), ".parquet")
+  dir.create(dirname(destino), recursive = TRUE, showWarnings = FALSE)
+  if (espacial) {
+    sfarrow::st_write_parquet(obj, destino,
+      compression = .COMPRESION_PARQUET, compression_level = .NIVEL_PARQUET)
+  } else {
+    arrow::write_parquet(obj, destino,
+      compression = .COMPRESION_PARQUET, compression_level = .NIVEL_PARQUET)
+  }
+  invisible(destino)
+}
+
+#' Garantiza que una fuente exista localmente. Si NI `.parquet` NI `.rds` están
+#' presentes, baja el `.parquet` de Drive como red de seguridad (p.ej. en Posit
+#' Connect sin Parquet empaquetado). No descarga nada si ya hay una fuente local
+#' (lo normal cuando el bundle trae los `.parquet`). El formato canónico en Drive
+#' es Parquet (lo sube `00_datos_entrada.qmd`); por eso se descarga a `.parquet`.
+asegurar_fuente <- function(base, drive_id) {
+  base <- sub("\\.(parquet|rds)$", "", base)
+  if (file.exists(paste0(base, ".parquet")) || file.exists(paste0(base, ".rds")))
+    return(invisible())
+  descargar_si_falta(drive_id, paste0(base, ".parquet"))
+}
+
 #' Une nombres_abreviados.csv a df y crea nombre_abreviado via coalesce.
 join_nombres_abreviados <- function(df, ruta_csv) {
   nombres <- data.table::fread(ruta_csv,
@@ -49,8 +115,11 @@ join_nombres_abreviados <- function(df, ruta_csv) {
 # --- Caché de arranque --------------------------------------------------------
 
 #' Ruta canónica del archivo de caché de arranque.
+#' Formato qs2 (zstd): ~13× más chico que el RDS sin comprimir y de lectura más
+#' rápida. La caché guarda objetos R (sf, closures de leaflet), por eso NO migra
+#' a Parquet; solo cambia el serializador.
 ruta_cache_app <- function() {
-  here::here("data", "processed", "_cache_app.rds")
+  here::here("data", "processed", "_cache_app.qs2")
 }
 
 #' Devuelve TRUE si la caché existe y ninguna fuente *existente* es más nueva.
@@ -63,22 +132,25 @@ cache_app_vigente <- function(ruta_cache, fuentes) {
   all(file.mtime(fuentes_presentes) <= mtime_cache)
 }
 
-#' Serializa la lista nombrada de objetos a disco.
+#' Serializa la lista nombrada de objetos a disco (qs2/zstd).
 guardar_cache_app <- function(objetos, ruta_cache = ruta_cache_app()) {
   dir.create(dirname(ruta_cache), recursive = TRUE, showWarnings = FALSE)
-  saveRDS(objetos, file = ruta_cache, compress = FALSE)
+  qs2::qs_save(objetos, ruta_cache)
   invisible(ruta_cache)
 }
 
 #' Carga la caché y devuelve la lista nombrada de objetos.
+#' Detecta el formato por contenido: intenta qs2 (formato actual) y cae a un
+#' `.rds` heredado durante la transición.
 cargar_cache_app <- function(ruta_cache = ruta_cache_app()) {
-  readRDS(ruta_cache)
+  tryCatch(qs2::qs_read(ruta_cache), error = function(e) readRDS(ruta_cache))
 }
 
-#' Descarga el shapefile departamental, simplifica y guarda como RDS.
+#' Descarga el shapefile departamental, simplifica y guarda como GeoParquet.
 #' El campo de código departamental se detecta automáticamente buscando
 #' nombres comunes: CCDD, IDDPTO, COD_DPTO, UBIGEO (2 primeros dígitos).
-preparar_deptos_geo <- function(ruta_descarga, ruta_rds) {
+#' `ruta_salida` es la ruta destino (la extensión se normaliza a `.parquet`).
+preparar_deptos_geo <- function(ruta_descarga, ruta_salida) {
   dir.create(dirname(ruta_descarga), recursive = TRUE, showWarnings = FALSE)
   googledrive::drive_deauth()
   googledrive::drive_download(
@@ -131,8 +203,7 @@ preparar_deptos_geo <- function(ruta_descarga, ruta_rds) {
     dplyr::select(cod_depto, geometry) |>
     dplyr::filter(!is.na(cod_depto))
 
-  dir.create(dirname(ruta_rds), recursive = TRUE, showWarnings = FALSE)
-  saveRDS(sf_final, file = ruta_rds)
+  escribir_fuente(sf_final, ruta_salida, espacial = TRUE)
   invisible(sf_final)
 }
 

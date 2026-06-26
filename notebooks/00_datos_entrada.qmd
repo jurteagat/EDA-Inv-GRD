@@ -53,13 +53,13 @@ inversiones GRD. Trabaja en **dos modos**, controlados por el parámetro
 
 - **`leer_desde_local = TRUE` → modo actualización (desde fuentes oficiales).**
   Descarga los datos crudos de MEF a `data/raw/` (Sección 1, Opción A), los
-  convierte a `.rds` en `data/processed/` (Sección 2) y —si
+  convierte a `.parquet` en `data/processed/` (Sección 2) y —si
   `subir_a_drive = TRUE`— los sube a Google Drive (Sección 3).
   *Nota: pese a su nombre, en este modo el cuaderno sí descarga de internet;
-  "local" alude a que la conversión a `.rds` parte de los archivos crudos
+  "local" alude a que la conversión a `.parquet` parte de los archivos crudos
   que quedan en `data/raw/`.*
 - **`leer_desde_local = FALSE` → modo consumo (desde Drive).**
-  Baja los `.rds` ya preparados desde Google Drive a `data/processed/`
+  Baja los `.parquet` ya preparados desde Google Drive a `data/processed/`
   (Sección 1, Opción B). No toca MEF ni vuelve a convertir nada. Es el modo
   que usa el cuaderno EDA.
 
@@ -91,7 +91,7 @@ Hay dos formas equivalentes:
   te has autenticado, corre primero el modo manual una vez para generar el
   token; un render no interactivo no puede abrir el popup.
 
-**B) Solo preparar los `.rds` para el EDA** (sin tocar MEF, bajando de Drive):
+**B) Solo preparar los `.parquet` para el EDA** (sin tocar MEF, bajando de Drive):
 
 ```bash
 quarto render notebooks/00_datos_entrada.qmd -P leer_desde_local:false
@@ -133,11 +133,17 @@ library(here)
 library(remotes)
 library(data.table)
 library(sf)
+library(arrow)     # escritura/lectura Parquet
+library(sfarrow)   # GeoParquet (sf -> parquet)
 library(glue)
 library(stringr)
 library(googledrive)
 library(googlesheets4)
 library(httr)
+
+# Reutiliza escribir_fuente()/leer_fuente() (única fuente de verdad del formato
+# Parquet/GeoParquet zstd). Ver R/datos.R.
+source(here::here("R", "datos.R"))
 
 # Paquete para descargar la capa ESRI (solo usado en Sección 1 con descargar_gpkg = TRUE)
 if (!require("esri2sf", quietly = TRUE))
@@ -331,7 +337,7 @@ if (isTRUE(params$leer_desde_local)) {
 ## Opción B: Google Drive (modo consumo)
 
 *Este bloque corre solo cuando `leer_desde_local = FALSE`. Descarga los
-archivos `.rds` ya preparados directamente a `data/processed/`. Es la ruta que
+archivos `.parquet` ya preparados directamente a `data/processed/`. Es la ruta que
 deja todo listo para el cuaderno EDA.*
 
 `drive_deauth()` desactiva la autenticación OAuth para que la descarga
@@ -340,7 +346,7 @@ de archivos de acceso público no necesite credenciales.
 ```{r s1-descargar-desde-drive, eval = !params$leer_desde_local}
 # Guarda en el cuerpo (espejo de la ruta MEF): si estamos actualizando desde
 # fuentes oficiales (leer_desde_local = TRUE) NO se baja de Drive, para no
-# sobreescribir los .rds frescos con datos desfasados. La opción `eval` ya lo
+# sobreescribir los .parquet frescos con datos desfasados. La opción `eval` ya lo
 # evita bajo `quarto render`; esto lo blinda también en ejecución manual.
 if (isTRUE(params$leer_desde_local)) {
   message("Omitido (leer_desde_local = TRUE): no se baja de Drive cuando se actualiza desde MEF.")
@@ -350,7 +356,7 @@ if (isTRUE(params$leer_desde_local)) {
 
   # httr::timeout() controla el timeout de googledrive (distinto de options(timeout)).
   # httr::with_config() lo aplica solo durante la descarga y restaura el valor anterior.
-  descargar_rds_drive <- function(id, nombre_local) {
+  descargar_fuente_drive <- function(id, nombre_local) {
     ruta <- here::here("data", "processed",nombre_local)
     message(glue::glue("Descargando {nombre_local} desde Google Drive ..."))
     httr::with_config(
@@ -364,19 +370,19 @@ if (isTRUE(params$leer_desde_local)) {
     message(glue::glue("  -> guardado en {ruta}"))
   }
 
-  descargar_rds_drive(params$gdrive_id_det_inv,     "det_inv.rds")
-  descargar_rds_drive(params$gdrive_id_diccionario, "diccionario.rds")
-  descargar_rds_drive(params$gdrive_id_geoinv,      "geoinv.rds")
-  descargar_rds_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.rds")
+  descargar_fuente_drive(params$gdrive_id_det_inv,     "det_inv.parquet")
+  descargar_fuente_drive(params$gdrive_id_diccionario, "diccionario.parquet")
+  descargar_fuente_drive(params$gdrive_id_geoinv,      "geoinv.parquet")
+  descargar_fuente_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.parquet")
 
   if (nzchar(params$gdrive_id_fechas)) {
-    descargar_rds_drive(params$gdrive_id_fechas, "fechas_fuentes.csv")
+    descargar_fuente_drive(params$gdrive_id_fechas, "fechas_fuentes.csv")
   } else {
     message("gdrive_id_fechas vacío: omito descarga del CSV de fechas.")
   }
 
   if (nzchar(params$gdrive_id_nombres_abrev)) {
-    descargar_rds_drive(params$gdrive_id_nombres_abrev, "nombres_abreviados.csv")
+    descargar_fuente_drive(params$gdrive_id_nombres_abrev, "nombres_abreviados.csv")
   } else {
     message("gdrive_id_nombres_abrev vacío: omito descarga de nombres abreviados.")
   }
@@ -387,15 +393,16 @@ if (isTRUE(params$leer_desde_local)) {
 
 ---
 
-# Sección 2 — Conversión a RDS
+# Sección 2 — Conversión a Parquet
 
 *Solo corre cuando `leer_desde_local = TRUE`. Lee cada fuente cruda en
-su totalidad (sin filtrar columnas) y la guarda como `.rds` en
-`data/processed/`. Los archivos tienen nombre fijo para que Google Drive
+su totalidad (sin filtrar columnas) y la guarda como `.parquet`
+(GeoParquet para las capas espaciales) en `data/processed/` vía
+`escribir_fuente()`. Los archivos tienen nombre fijo para que Google Drive
 pueda reemplazarlos sin cambiar el ID del enlace compartido.*
 
-El formato `.rds` comprime bien y `readRDS()` es ~10× más rápido que
-`data.table::fread()` para el mismo volumen de datos.
+El formato **Parquet** (zstd) comprime mejor que `.rds` gzip, se lee ~4–20×
+más rápido y es legible por pandas/geopandas para complementos en Python.
 
 ```{r s2-convertir-det-inv, eval = params$leer_desde_local}
 if (isTRUE(params$leer_desde_local)) {
@@ -403,8 +410,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_det_inv_full <- data.table::fread(ruta_det_inv, encoding = "UTF-8")
   cat("Dimensiones det_inv:", dim(df_det_inv_full), "\n")
 
-  saveRDS(df_det_inv_full, here::here("data", "processed","det_inv.rds"))
-  message("Guardado: data/processed/det_inv.rds")
+  escribir_fuente(df_det_inv_full, here::here("data", "processed", "det_inv"))
+  message("Guardado: data/processed/det_inv.parquet")
   rm(df_det_inv_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -417,8 +424,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_diccionario_full <- data.table::fread(ruta_diccionario, encoding = "UTF-8")
   cat("Dimensiones diccionario:", dim(df_diccionario_full), "\n")
 
-  saveRDS(df_diccionario_full, here::here("data", "processed","diccionario.rds"))
-  message("Guardado: data/processed/diccionario.rds")
+  escribir_fuente(df_diccionario_full, here::here("data", "processed", "diccionario"))
+  message("Guardado: data/processed/diccionario.parquet")
   rm(df_diccionario_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -431,8 +438,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_geoinv_full <- sf::st_read(ruta_gpkg, quiet = FALSE)
   cat("Dimensiones geoinv:", dim(df_geoinv_full), "\n")
 
-  saveRDS(df_geoinv_full, here::here("data", "processed","geoinv.rds"))
-  message("Guardado: data/processed/geoinv.rds")
+  escribir_fuente(df_geoinv_full, here::here("data", "processed", "geoinv"), espacial = TRUE)
+  message("Guardado: data/processed/geoinv.parquet")
   rm(df_geoinv_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -445,8 +452,8 @@ if (isTRUE(params$leer_desde_local)) {
   df_grd_full <- data.table::fread(ruta_grd_12_25, encoding = "UTF-8")
   cat("Dimensiones grd_2012_25:", dim(df_grd_full), "\n")
 
-  saveRDS(df_grd_full, here::here("data", "processed","grd_2012_25.rds"))
-  message("Guardado: data/processed/grd_2012_25.rds")
+  escribir_fuente(df_grd_full, here::here("data", "processed", "grd_2012_25"))
+  message("Guardado: data/processed/grd_2012_25.parquet")
   rm(df_grd_full); invisible(gc())
 } else {
   message("Omitido (leer_desde_local = FALSE): este paso es solo para la ruta MEF/local.")
@@ -478,14 +485,14 @@ if (isTRUE(params$leer_desde_local)) {
 ```{r s2-verificar, eval = params$leer_desde_local}
 if (isTRUE(params$leer_desde_local)) {
   # Confirma que los archivos existen y muestra su tamaño.
-  rds_esperados <- c("det_inv.rds", "diccionario.rds", "geoinv.rds", "grd_2012_25.rds",
-                     "nombres_abreviados.csv")
-  rutas_rds     <- here::here("data", "processed",rds_esperados)
-  existe        <- file.exists(rutas_rds)
-  tamanos_mb    <- round(file.size(rutas_rds) / 1024^2, 1)
+  archivos_esperados <- c("det_inv.parquet", "diccionario.parquet", "geoinv.parquet",
+                          "grd_2012_25.parquet", "nombres_abreviados.csv")
+  rutas         <- here::here("data", "processed", archivos_esperados)
+  existe        <- file.exists(rutas)
+  tamanos_mb    <- round(file.size(rutas) / 1024^2, 1)
 
   print(data.frame(
-    archivo    = rds_esperados,
+    archivo    = archivos_esperados,
     existe     = existe,
     tamano_mb  = tamanos_mb
   ))
@@ -544,6 +551,13 @@ cambiar su ID ni sus permisos de compartición. Eso garantiza que los
 enlaces públicos que hayas distribuido siguen funcionando tras cada
 actualización semanal.
 
+> **Migración RDS → Parquet:** los IDs de Drive (`gdrive_id_*`) no cambian; al
+> subir, `drive_update()` reemplaza el contenido del archivo con los nuevos
+> bytes Parquet manteniendo el ID. Tras la primera subida, el archivo en Drive
+> contiene Parquet aunque su nombre visible siga diciendo `.rds`; puedes
+> renombrarlo a `.parquet` en Drive (opcional, el ID no cambia). El modo consumo
+> (Opción B) ya descarga esos archivos como `.parquet` localmente.
+
 ```{r s3-subir-drive, eval = params$leer_desde_local && params$subir_a_drive}
 # Solo corre cuando leer_desde_local = TRUE Y subir_a_drive = TRUE.
 # Desde terminal: quarto render notebooks/00_datos_entrada.qmd -P subir_a_drive:true
@@ -552,7 +566,7 @@ if (isTRUE(params$leer_desde_local) && isTRUE(params$subir_a_drive)) {
 
   googledrive::drive_auth()  # abre el navegador la primera vez por sesión
 
-  subir_rds_drive <- function(id, nombre_local) {
+  subir_fuente_drive <- function(id, nombre_local) {
     ruta <- here::here("data", "processed",nombre_local)
     if (!file.exists(ruta)) {
       message(glue::glue("AVISO: no existe {ruta}, omitiendo."))
@@ -566,19 +580,19 @@ if (isTRUE(params$leer_desde_local) && isTRUE(params$subir_a_drive)) {
     message(glue::glue("  -> actualizado correctamente."))
   }
 
-  subir_rds_drive(params$gdrive_id_det_inv,     "det_inv.rds")
-  subir_rds_drive(params$gdrive_id_diccionario, "diccionario.rds")
-  subir_rds_drive(params$gdrive_id_geoinv,      "geoinv.rds")
-  subir_rds_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.rds")
+  subir_fuente_drive(params$gdrive_id_det_inv,     "det_inv.parquet")
+  subir_fuente_drive(params$gdrive_id_diccionario, "diccionario.parquet")
+  subir_fuente_drive(params$gdrive_id_geoinv,      "geoinv.parquet")
+  subir_fuente_drive(params$gdrive_id_grd_12_25,   "grd_2012_25.parquet")
 
   if (nzchar(params$gdrive_id_fechas)) {
-    subir_rds_drive(params$gdrive_id_fechas, "fechas_fuentes.csv")
+    subir_fuente_drive(params$gdrive_id_fechas, "fechas_fuentes.csv")
   } else {
     message("gdrive_id_fechas vacío: omito subida del CSV de fechas (pega el ID en el YAML).")
   }
 
   if (nzchar(params$gdrive_id_nombres_abrev)) {
-    subir_rds_drive(params$gdrive_id_nombres_abrev, "nombres_abreviados.csv")
+    subir_fuente_drive(params$gdrive_id_nombres_abrev, "nombres_abreviados.csv")
   } else {
     message("gdrive_id_nombres_abrev vacío: omito subida de nombres abreviados.")
   }

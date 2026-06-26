@@ -90,6 +90,66 @@ test_that("round-trip guardar/cargar preserva los objetos", {
   unlink(ruta)
 })
 
+# --- ruta_fuente / leer_fuente / escribir_fuente -----------------------------
+
+test_that("ruta_fuente prioriza .parquet sobre .rds", {
+  dir <- tempfile(); dir.create(dir)
+  base <- file.path(dir, "x")
+  saveRDS(data.frame(a = 1), paste0(base, ".rds"))
+  expect_equal(ruta_fuente(base), paste0(base, ".rds"))       # solo rds
+  arrow::write_parquet(data.frame(a = 1), paste0(base, ".parquet"))
+  expect_equal(ruta_fuente(base), paste0(base, ".parquet"))   # ahora parquet
+  expect_equal(ruta_fuente(paste0(base, ".rds")), paste0(base, ".parquet")) # ignora ext
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("escribir_fuente + leer_fuente: round-trip no espacial", {
+  dir <- tempfile(); dir.create(dir)
+  base <- file.path(dir, "tab")
+  df <- data.frame(codigo = c("001","002"), monto = c(10, 20), stringsAsFactors = FALSE)
+  ruta <- escribir_fuente(df, base)
+  expect_true(file.exists(ruta))
+  expect_match(ruta, "\\.parquet$")
+  leido <- as.data.frame(leer_fuente(base))
+  expect_equal(leido, df)
+  # col_select limita columnas
+  sel <- as.data.frame(leer_fuente(base, col_select = "monto"))
+  expect_equal(names(sel), "monto")
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("leer_fuente cae a .rds cuando no hay parquet", {
+  dir <- tempfile(); dir.create(dir)
+  base <- file.path(dir, "y")
+  saveRDS(data.frame(a = 1:3), paste0(base, ".rds"))
+  expect_equal(leer_fuente(base)$a, 1:3)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("escribir_fuente + leer_fuente: round-trip espacial (GeoParquet)", {
+  dir <- tempfile(); dir.create(dir)
+  base <- file.path(dir, "geo")
+  g <- sf::st_sf(
+    id = c("A","B"),
+    geometry = sf::st_sfc(sf::st_point(c(0,0)), sf::st_point(c(1,1))), crs = 4326
+  )
+  escribir_fuente(g, base, espacial = TRUE)
+  leido <- leer_fuente(base, espacial = TRUE)
+  expect_s3_class(leido, "sf")
+  expect_equal(nrow(leido), 2)
+  expect_setequal(leido$id, c("A","B"))
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("asegurar_fuente no descarga si ya hay fuente local", {
+  dir <- tempfile(); dir.create(dir)
+  base <- file.path(dir, "z")
+  saveRDS(data.frame(a = 1), paste0(base, ".rds"))
+  # Con .rds presente no debe intentar descargar de Drive (id falso, sin red)
+  expect_invisible(asegurar_fuente(base, "id_falso"))
+  unlink(dir, recursive = TRUE)
+})
+
 # --- filtrar_det_grd ---------------------------------------------------------
 test_that("filtrar_det_grd: incluye programa GRD, drenaje e ioarr; excluye incendios", {
   det <- data.table::data.table(

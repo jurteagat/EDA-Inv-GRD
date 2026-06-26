@@ -1,4 +1,3 @@
-data
 folder_xyz_ignore
 .quarto
 .Rproj.user
@@ -8,3 +7,14 @@ renv/python
 .git
 .gstack
 tests
+notebooks
+notas_optimizacion.md
+# Datos: se EMPAQUETAN los .parquet preparados y los CSV chicos para que el
+# cold-start en Connect no dependa de descargar de Drive. Se excluyen los crudos,
+# la caché de arranque (se reconstruye desde el Parquet del bundle, así nunca
+# queda desfasada) y cualquier .rds heredado.
+data/raw
+data/processed/_cache_app.qs2
+data/processed/_cache_app.rds
+data/processed/grd_2012_2025_t.csv
+data/processed/*.rds

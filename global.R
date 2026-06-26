@@ -45,17 +45,20 @@ source(here::here("R/exportar.R"),  local = FALSE)
 ggplot2::theme_set(theme_jut())
 
 # --- Evaluar caché ANTES de cualquier descarga --------------------------------
-ruta_rds <- function(f) here::here("data", "processed", f)
+ruta_rds  <- function(f) here::here("data", "processed", f)  # con extensión (CSV/legacy)
+base_proc <- function(f) here::here("data", "processed", f)  # base SIN extensión
 
 .ruta_cache <- ruta_cache_app()
 
+# Fuentes que invalidan la caché por mtime. ruta_fuente() apunta al .parquet si
+# existe (lo normal) o al .rds heredado durante la transición.
 .fuentes_cache <- c(
-  ruta_rds("det_inv.rds"),
-  ruta_rds("diccionario.rds"),
-  ruta_rds("geoinv.rds"),
-  ruta_rds("grd_2012_25.rds"),
+  ruta_fuente(base_proc("det_inv")),
+  ruta_fuente(base_proc("diccionario")),
+  ruta_fuente(base_proc("geoinv")),
+  ruta_fuente(base_proc("grd_2012_25")),
   ruta_rds("nombres_abreviados.csv"),
-  ruta_rds("deptos_geo.rds"),
+  ruta_fuente(base_proc("deptos_geo")),
   here::here("data", "processed", "fechas_fuentes.csv"),
   list.files(here::here("R"), pattern = "\\.R$", full.names = TRUE),
   here::here("global.R")
@@ -75,25 +78,28 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
 
   # --- Ruta completa: pipeline + guardar caché --------------------------------
 
-  # Descarga de archivos si faltan
-  descargar_si_falta(DRIVE_IDS$det_inv,            ruta_rds("det_inv.rds"))
-  descargar_si_falta(DRIVE_IDS$diccionario,         ruta_rds("diccionario.rds"))
-  descargar_si_falta(DRIVE_IDS$geoinv,              ruta_rds("geoinv.rds"))
-  descargar_si_falta(DRIVE_IDS$grd_12_25,           ruta_rds("grd_2012_25.rds"))
+  # Asegura las fuentes localmente. asegurar_fuente() NO descarga si ya hay
+  # Parquet en el bundle (caso Connect optimizado); si no, baja el .rds de Drive
+  # como red de seguridad. Los CSV pequeños se manejan aparte.
+  asegurar_fuente(base_proc("det_inv"),     DRIVE_IDS$det_inv)
+  asegurar_fuente(base_proc("diccionario"), DRIVE_IDS$diccionario)
+  asegurar_fuente(base_proc("geoinv"),      DRIVE_IDS$geoinv)
+  asegurar_fuente(base_proc("grd_2012_25"), DRIVE_IDS$grd_12_25)
   descargar_si_falta(DRIVE_IDS$nombres_abreviados,  ruta_rds("nombres_abreviados.csv"))
   descargar_si_falta(DRIVE_IDS$fechas_fuentes,      ruta_rds("fechas_fuentes.csv"))
 
-  # Shapefile departamental: generar si no existe
-  if (!file.exists(ruta_rds("deptos_geo.rds"))) {
-    message("Generando deptos_geo.rds desde Drive…")
+  # Shapefile departamental: generar si no existe (ni Parquet ni RDS)
+  if (!file.exists(ruta_fuente(base_proc("deptos_geo")))) {
+    message("Generando deptos_geo.parquet desde Drive…")
     preparar_deptos_geo(
       ruta_descarga = here::here("data", "raw", "deptos_shp.zip"),
-      ruta_rds      = ruta_rds("deptos_geo.rds")
+      ruta_salida   = base_proc("deptos_geo")
     )
   }
-  deptos_geo <- readRDS(ruta_rds("deptos_geo.rds"))
+  deptos_geo <- leer_fuente(base_proc("deptos_geo"), espacial = TRUE)
 
-  # Lectura de RDS
+  # Lectura de fuentes (Parquet preferido). En det_inv se usa col_select para
+  # leer solo las columnas que la app necesita (menos RAM y tiempo).
   cols_det_inv <- c(
     "CODIGO_UNICO", "MONTO_VIABLE", "COSTO_ACTUALIZADO", "DES_TIPOLOGIA",
     "NIVEL", "ENTIDAD", "NOMBRE_INVERSION", "ESTADO", "SITUACION", "NOMBRE_UEP",
@@ -107,13 +113,15 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
   )
   cols_det_inv_lower <- janitor::make_clean_names(cols_det_inv)
 
-  df_det_inv <- data.table::as.data.table(readRDS(ruta_rds("det_inv.rds")))
+  df_det_inv <- data.table::as.data.table(
+    leer_fuente(base_proc("det_inv"), col_select = cols_det_inv)
+  )
   data.table::setnames(df_det_inv, janitor::make_clean_names(names(df_det_inv)))
   df_det_inv <- df_det_inv[, ..cols_det_inv_lower]
   df_det_inv[, codigo_unico := as.character(codigo_unico)]
   df_det_inv[, ubigeo := zero_pad_ubigeo(ubigeo)]
 
-  df_pu_geoinv_inv_g <- readRDS(ruta_rds("geoinv.rds"))
+  df_pu_geoinv_inv_g <- leer_fuente(base_proc("geoinv"), espacial = TRUE)
   local({
     n <- janitor::make_clean_names(names(df_pu_geoinv_inv_g))
     n[n == "cod_unico"]     <- "codigo_unico"
@@ -129,7 +137,7 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
                              "ANIO", "PIA", "PIM", "DEVENGADO", "PLIEGO_NOMBRE")
   cols_grd_12_25_lower <- janitor::make_clean_names(cols_grd_12_25)
 
-  df_grd_2012_25 <- data.table::as.data.table(readRDS(ruta_rds("grd_2012_25.rds")))
+  df_grd_2012_25 <- data.table::as.data.table(leer_fuente(base_proc("grd_2012_25")))
   data.table::setnames(df_grd_2012_25, janitor::make_clean_names(names(df_grd_2012_25)))
   df_grd_2012_25 <- df_grd_2012_25[, ..cols_grd_12_25_lower]
   data.table::setnames(df_grd_2012_25, "producto_proyecto", "codigo_unico")
@@ -312,9 +320,9 @@ if (cache_app_vigente(.ruta_cache, .fuentes_cache) &&
     "pliego_nombre",        "Pliego presupuestal al que pertenece la Entidad (~90% faltante en la fuente SIAF)."
   )
 
-  ruta_dicc    <- ruta_rds("diccionario.rds")
+  ruta_dicc    <- ruta_fuente(base_proc("diccionario"))
   dicc_oficial <- if (file.exists(ruta_dicc)) {
-    tryCatch(readRDS(ruta_dicc), error = function(e) NULL)
+    tryCatch(leer_fuente(base_proc("diccionario")), error = function(e) NULL)
   } else { NULL }
 
   vars_finales    <- names(df_pu_geoinv_inv_g_dpf)
